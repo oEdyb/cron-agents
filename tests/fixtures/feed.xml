@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Fixture Feed</title>
+    <link>https://example.com</link>
+    <description>Local test data</description>
+    <item>
+      <guid>item-1</guid>
+      <title>First useful release</title>
+      <link>https://example.com/first?utm_source=test</link>
+      <description>A concrete release with enough detail to include in a briefing.</description>
+      <author>Ada</author>
+    </item>
+    <item>
+      <guid>item-2</guid>
+      <title>Second useful release</title>
+      <link>https://example.com/second</link>
+      <description>A second release with implementation notes and measured results.</description>
+      <author>Linus</author>
+    </item>
+    <item>
+      <guid>item-3</guid>
+      <title>Rejected candidate</title>
+      <link>https://example.com/third</link>
+      <description>This record must never reach the writer prompt in the fixture run.</description>
+      <author>Grace</author>
+    </item>
+  </channel>
+</rss>

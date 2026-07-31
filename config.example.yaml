@@ -1,0 +1,67 @@
+state_dir: data
+
+models:
+  codex:
+    command:
+      - codex
+      - exec
+      - --ephemeral
+      - --skip-git-repo-check
+      - --ignore-user-config
+      - --ignore-rules
+      - --sandbox
+      - read-only
+      - -c
+      - features.shell_tool=false
+      - -c
+      - agents.enabled=false
+      - -c
+      - 'web_search="disabled"'
+      - '-'
+    timeout: 600
+    env: [PATH, HOME, CODEX_HOME]
+
+  kimi:
+    command:
+      - kimi
+      - --output-format
+      - stream-json
+      - --agent-file
+      - agents/text.md
+      - -p
+      - '{prompt}'
+    timeout: 600
+    env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
+    output: jsonl
+
+agents:
+  curator:
+    model: codex
+    prompt: prompts/curator.md
+  writer:
+    model: codex
+    prompt: prompts/writer.md
+
+jobs:
+  rss:
+    module: cron_agents.jobs.rss
+    limit_per_feed: 20
+    feeds:
+      - name: github-changelog
+        url: https://github.blog/changelog/feed/
+
+  hn:
+    module: cron_agents.jobs.hn
+    limit: 30
+
+  briefing:
+    module: cron_agents.jobs.briefing
+    curator: curator
+    writer: writer
+    context: Software, AI research, useful tools, and practical engineering ideas.
+    lookback_hours: 36
+    candidate_limit: 100
+    min_sources: 5
+    max_sources: 10
+    max_content_chars: 5000
+    output_dir: briefings

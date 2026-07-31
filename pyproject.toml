@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cron-agents"
+version = "0.1.0"
+description = "Scheduled collectors and two-agent daily briefings."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Olle Dyberg" }]
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+cron-agents = "cron_agents.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cron_agents*"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

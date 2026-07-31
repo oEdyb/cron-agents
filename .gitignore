@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+config.yaml
+.run.lock
+data/
+briefings/
+build/
+dist/
