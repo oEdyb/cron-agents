@@ -61,8 +61,31 @@ def test_atomic_write_syncs_file_and_directory(tmp_path, monkeypatch) -> None:
     assert synced == [False, True]
 
 
+def test_document_escapes_untrusted_source_metadata() -> None:
+    source = Source.create(
+        provider="test",
+        provider_id="evil",
+        url="https://example.com/a)><script>alert(1)</script>",
+        title="Safe\n## Injected ![[Secret]] [source:unknown] [break](https://evil)",
+    )
+
+    document = briefing._document(
+        "2026-08-01",
+        [source],
+        "Body [source:test:evil]",
+    )
+
+    assert "\n## Injected" not in document
+    assert "![[Secret]]" not in document
+    assert "[source:unknown]" not in document
+    assert "<script>" not in document
+    assert 'summary: "Curated daily briefing from 1 selected source."' in document
+    assert "https://example.com/a%29%3E%3Cscript%3Ealert%281%29%3C/script%3E" in document
+    briefing._validate_writer_output(document, [source.id])
+
+
 def test_writer_receives_only_selected_sources(project) -> None:
-    add_sources(project, 1, 3)
+    sources = add_sources(project, 1, 3)
 
     result = run_job(project.config, "briefing", date(2026, 7, 31))
 
@@ -74,6 +97,13 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert result["recovered"] is False
     assert len(selected) == 2
     assert all(f"[source:{source_id}]" in output for source_id in selected)
+    assert "type: briefing" in output
+    assert 'title: "Daily Briefing — 2026-07-31"' in output
+    assert 'summary: "Curated daily briefing from 2 selected sources."' in output
+    assert "status: generated" in output
+    assert "tags: [briefing]" in output
+    assert "## Sources" in output
+    assert all(f"]({source.url})" in output for source in sources if source.id in selected)
     assert all(source_id in writer_prompt for source_id in selected)
     assert rejected not in writer_prompt
     assert [event["kind"] for event in events] == ["curator", "writer"]

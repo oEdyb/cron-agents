@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import fcntl
+import html
 import json
 import os
 import re
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 from cron_agents.db import Source, utc_now
 from cron_agents.jobs import JobContext
@@ -152,9 +154,33 @@ def _validate_writer_output(output: str, source_ids: list[str]) -> None:
         raise ValueError(f"writer omitted source IDs: {', '.join(missing)}")
 
 
-def _document(run_date: str, source_ids: list[str], body: str) -> str:
-    metadata = "\n".join(f"  - {json.dumps(source_id)}" for source_id in source_ids)
-    return f"---\ndate: {run_date}\nsource_ids:\n{metadata}\n---\n\n{body.strip()}\n"
+def _document(run_date: str, sources: list[Source], body: str) -> str:
+    metadata = "\n".join(f"  - {json.dumps(source.id)}" for source in sources)
+    references = []
+    for source in sources:
+        title = " ".join(source.title.split())
+        title = html.escape(title, quote=False)
+        title = title.replace("[", "&#91;").replace("]", "&#93;").replace("`", "&#96;")
+        url = quote(source.url, safe=":/?#@!$&'*+,;=%")
+        references.append(f"- [{title}]({url}) `[source:{source.id}]`")
+    title = json.dumps(f"Daily Briefing — {run_date}", ensure_ascii=False)
+    source_word = "source" if len(sources) == 1 else "sources"
+    summary = json.dumps(
+        f"Curated daily briefing from {len(sources)} selected {source_word}.", ensure_ascii=False
+    )
+    return (
+        "---\n"
+        "type: briefing\n"
+        f"title: {title}\n"
+        f"summary: {summary}\n"
+        f"date: {run_date}\n"
+        "status: generated\n"
+        "tags: [briefing]\n"
+        f"source_ids:\n{metadata}\n"
+        "---\n\n"
+        f"{body.strip()}\n\n"
+        f"## Sources\n\n{'\n'.join(references)}\n"
+    )
 
 
 def run(ctx: JobContext) -> dict[str, object]:
@@ -245,7 +271,9 @@ def _run(ctx: JobContext) -> dict[str, object]:
         raise ValueError("briefing.writer must be a string")
     body = _agent(ctx, writer_name, _writer_prompt(sources, max_content_chars, context))
     _validate_writer_output(body, source_ids)
-    _atomic_write(output_path, _document(run_date, source_ids, body))
+    document = _document(run_date, sources, body)
+    _validate_writer_output(document, source_ids)
+    _atomic_write(output_path, document)
     ctx.database.mark_published(source_ids)
 
     return {
