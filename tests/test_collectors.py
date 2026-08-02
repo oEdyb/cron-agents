@@ -188,6 +188,42 @@ def test_hn_reader_enriches_new_linked_story(tmp_path: Path, monkeypatch) -> Non
     monkeypatch.setattr(hn, "fetch_content", reader)
     ctx = context(
         tmp_path,
+        {
+            "base_url": "https://hn.test",
+            "limit": 1,
+            "reader_url": "https://reader.test/api/",
+        },
+    )
+
+    result = hn.run(ctx)
+    item = ctx.database.get_sources(["hn:1"])[0]
+
+    assert result == {"job": "hn", "fetched": 1, "inserted": 1, "reader_failures": 0}
+    assert requested == ["https://reader.test/api/https://example.com/one"]
+    assert item.content == "Concrete article facts."
+
+
+def test_hn_reader_replaces_whitespace_story_text(tmp_path: Path, monkeypatch) -> None:
+    payloads = {
+        "https://hn.test/topstories.json": [1],
+        "https://hn.test/item/1.json": {
+            "id": 1,
+            "type": "story",
+            "title": "One",
+            "url": "https://example.com/one",
+            "text": "  \n",
+        },
+    }
+    monkeypatch.setattr(hn, "fetch_json", payloads.__getitem__)
+    requested: list[str] = []
+
+    def reader(url: str, **_kwargs):
+        requested.append(url)
+        return b"Concrete article facts.", url
+
+    monkeypatch.setattr(hn, "fetch_content", reader)
+    ctx = context(
+        tmp_path,
         {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
     )
 
@@ -197,6 +233,60 @@ def test_hn_reader_enriches_new_linked_story(tmp_path: Path, monkeypatch) -> Non
     assert result == {"job": "hn", "fetched": 1, "inserted": 1, "reader_failures": 0}
     assert requested == ["https://reader.test/https://example.com/one"]
     assert item.content == "Concrete article facts."
+
+
+def test_hn_reader_rejects_invalid_utf8(tmp_path: Path, monkeypatch) -> None:
+    payloads = {
+        "https://hn.test/topstories.json": [1],
+        "https://hn.test/item/1.json": {
+            "id": 1,
+            "type": "story",
+            "title": "One",
+            "url": "https://example.com/one",
+        },
+    }
+    monkeypatch.setattr(hn, "fetch_json", payloads.__getitem__)
+    monkeypatch.setattr(
+        hn,
+        "fetch_content",
+        lambda url, **_kwargs: (b"\xff\xfe", url),
+    )
+    ctx = context(
+        tmp_path,
+        {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
+    )
+
+    result = hn.run(ctx)
+
+    assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 1}
+    assert ctx.database.status("hn:1") is None
+
+
+def test_hn_reader_caps_article_content(tmp_path: Path, monkeypatch) -> None:
+    payloads = {
+        "https://hn.test/topstories.json": [1],
+        "https://hn.test/item/1.json": {
+            "id": 1,
+            "type": "story",
+            "title": "One",
+            "url": "https://example.com/one",
+        },
+    }
+    monkeypatch.setattr(hn, "fetch_json", payloads.__getitem__)
+    monkeypatch.setattr(
+        hn,
+        "fetch_content",
+        lambda url, **_kwargs: (b"a" * (hn.MAX_READER_CHARS + 1), url),
+    )
+    ctx = context(
+        tmp_path,
+        {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
+    )
+
+    hn.run(ctx)
+    item = ctx.database.get_sources(["hn:1"])[0]
+
+    assert len(item.content) == hn.MAX_READER_CHARS
 
 
 def test_hn_reader_skips_source_already_in_ledger(tmp_path: Path, monkeypatch) -> None:
@@ -253,6 +343,24 @@ def test_hn_reader_failure_does_not_store_title_only_source(tmp_path: Path, monk
 
     assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 1}
     assert ctx.database.status("hn:1") is None
+
+
+@pytest.mark.parametrize(
+    "reader_url",
+    ["https://reader.test/?token=x", "https://reader.test/#part", "https://:443"],
+)
+def test_hn_rejects_invalid_reader_url(
+    tmp_path: Path, reader_url: str, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        hn,
+        "fetch_json",
+        lambda _url: pytest.fail("invalid Reader URL should fail before collection"),
+    )
+    ctx = context(tmp_path, {"limit": 1, "reader_url": reader_url})
+
+    with pytest.raises(ValueError, match="reader_url"):
+        hn.run(ctx)
 
 
 def test_hn_rejects_limit_above_documented_maximum(tmp_path: Path) -> None:

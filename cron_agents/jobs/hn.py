@@ -22,9 +22,18 @@ def run(ctx: JobContext) -> dict[str, object]:
     if reader_url is not None:
         if not isinstance(reader_url, str) or not reader_url:
             raise ValueError("hn.reader_url must be a non-empty string")
-        parsed_reader = urlsplit(reader_url)
-        if parsed_reader.scheme not in {"http", "https"} or not parsed_reader.netloc:
-            raise ValueError("hn.reader_url must use http or https")
+        try:
+            parsed_reader = urlsplit(reader_url)
+            hostname = parsed_reader.hostname
+        except ValueError as error:
+            raise ValueError("hn.reader_url must be a valid http or https URL prefix") from error
+        if (
+            parsed_reader.scheme not in {"http", "https"}
+            or not hostname
+            or parsed_reader.query
+            or parsed_reader.fragment
+        ):
+            raise ValueError("hn.reader_url must be a valid http or https URL prefix")
         reader_url = reader_url.rstrip("/")
 
     story_ids = fetch_json(f"{base_url}/topstories.json")
@@ -50,16 +59,16 @@ def run(ctx: JobContext) -> dict[str, object]:
         url = item.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
         if not isinstance(url, str):
             raise ValueError(f"Hacker News returned an invalid URL for {story_id}")
-        content = str(item.get("text") or "")
+        content = str(item.get("text") or "").strip()
         if reader_url and not content:
             try:
                 document, _ = fetch_content(
                     f"{reader_url}/{url}", timeout=45, max_bytes=1_000_000
                 )
+                content = document.decode("utf-8").strip()[:MAX_READER_CHARS]
             except (OSError, ValueError):
                 reader_failures += 1
                 continue
-            content = document.decode("utf-8", errors="replace").strip()[:MAX_READER_CHARS]
             if not content:
                 reader_failures += 1
                 continue
