@@ -21,7 +21,7 @@ def test_shipped_example_config_loads() -> None:
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:
     root = Path(__file__).parent.parent
-    parts = (root / "agents" / "text.md").read_text().split("---", 2)
+    parts = (root / "prompts" / "kimi.md").read_text().split("---", 2)
     frontmatter = yaml.safe_load(parts[1])
 
     assert frontmatter["tools"] == []

@@ -38,6 +38,8 @@ Model commands are plain argument lists. Prompts go to stdin unless the list con
 .venv/bin/cron-agents run briefing
 ```
 
+The example HN job uses Jina Reader to turn each new linked article into text before curation. Remove `reader_url` to keep title-only HN records.
+
 Dates use UTC. `--date YYYY-MM-DD` retries or rebuilds one date. Historical runs only consider sources fetched before the end of that UTC date; writer retries reuse the saved selection.
 
 ## Schedule
@@ -113,5 +115,6 @@ The tests use local fixtures and do not require a model login or network access.
 - [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive)
 - [Kimi command](https://moonshotai.github.io/kimi-code/en/reference/kimi-command) and [agent files](https://moonshotai.github.io/kimi-code/en/customization/agents.html)
 - [Hacker News API](https://github.com/HackerNews/API)
+- [Jina Reader](https://github.com/jina-ai/reader)
 - [RSS 2.0](https://www.rssboard.org/rss-specification) and [Atom](https://www.rfc-editor.org/rfc/rfc4287.html)
 - [Reddit Data API rules](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki)

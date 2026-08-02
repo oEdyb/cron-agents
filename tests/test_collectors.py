@@ -8,7 +8,7 @@ import pytest
 
 from cron_agents import jobs
 from cron_agents.config import Config, JobConfig
-from cron_agents.db import Database
+from cron_agents.db import Database, Source
 from cron_agents.jobs import JobContext, hn, rss
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -162,10 +162,97 @@ def test_hn_collects_stories(tmp_path: Path, monkeypatch) -> None:
     result = hn.run(ctx)
     item = ctx.database.get_sources(["hn:1"])[0]
 
-    assert result == {"job": "hn", "fetched": 1, "inserted": 1}
+    assert result == {"job": "hn", "fetched": 1, "inserted": 1, "reader_failures": 0}
     assert item.title == "One"
     assert item.url == "https://example.com/one"
     assert item.author == "ada"
+
+
+def test_hn_reader_enriches_new_linked_story(tmp_path: Path, monkeypatch) -> None:
+    payloads = {
+        "https://hn.test/topstories.json": [1],
+        "https://hn.test/item/1.json": {
+            "id": 1,
+            "type": "story",
+            "title": "One",
+            "url": "https://example.com/one",
+        },
+    }
+    monkeypatch.setattr(hn, "fetch_json", payloads.__getitem__)
+    requested: list[str] = []
+
+    def reader(url: str, **_kwargs):
+        requested.append(url)
+        return b"Concrete article facts.", url
+
+    monkeypatch.setattr(hn, "fetch_content", reader)
+    ctx = context(
+        tmp_path,
+        {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
+    )
+
+    result = hn.run(ctx)
+    item = ctx.database.get_sources(["hn:1"])[0]
+
+    assert result == {"job": "hn", "fetched": 1, "inserted": 1, "reader_failures": 0}
+    assert requested == ["https://reader.test/https://example.com/one"]
+    assert item.content == "Concrete article facts."
+
+
+def test_hn_reader_skips_source_already_in_ledger(tmp_path: Path, monkeypatch) -> None:
+    ctx = context(
+        tmp_path,
+        {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
+    )
+    ctx.database.add_sources(
+        [
+            Source.create(
+                provider="hn",
+                provider_id="1",
+                url="https://example.com/one",
+                title="One",
+            )
+        ]
+    )
+    monkeypatch.setattr(
+        hn, "fetch_json", lambda url: [1] if url.endswith("topstories.json") else None
+    )
+    monkeypatch.setattr(
+        hn,
+        "fetch_content",
+        lambda *_args, **_kwargs: pytest.fail("reader should not fetch a known source"),
+    )
+
+    result = hn.run(ctx)
+
+    assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 0}
+
+
+def test_hn_reader_failure_does_not_store_title_only_source(tmp_path: Path, monkeypatch) -> None:
+    payloads = {
+        "https://hn.test/topstories.json": [1],
+        "https://hn.test/item/1.json": {
+            "id": 1,
+            "type": "story",
+            "title": "One",
+            "url": "https://example.com/one",
+        },
+    }
+    monkeypatch.setattr(hn, "fetch_json", payloads.__getitem__)
+    monkeypatch.setattr(
+        hn,
+        "fetch_content",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("reader unavailable")),
+    )
+    ctx = context(
+        tmp_path,
+        {"base_url": "https://hn.test", "limit": 1, "reader_url": "https://reader.test/"},
+    )
+
+    result = hn.run(ctx)
+
+    assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 1}
+    assert ctx.database.status("hn:1") is None
 
 
 def test_hn_rejects_limit_above_documented_maximum(tmp_path: Path) -> None:

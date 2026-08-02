@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from cron_agents.db import Source, utc_now
-from cron_agents.jobs import JobContext, fetch_json
+from cron_agents.jobs import JobContext, fetch_content, fetch_json
 
 # Official API: https://github.com/HackerNews/API
 DEFAULT_BASE_URL = "https://hacker-news.firebaseio.com/v0"
+MAX_READER_CHARS = 20_000
 
 
 def run(ctx: JobContext) -> dict[str, object]:
@@ -15,6 +18,14 @@ def run(ctx: JobContext) -> dict[str, object]:
     if not isinstance(base_url, str) or not base_url:
         raise ValueError("hn.base_url must be a non-empty string")
     base_url = base_url.rstrip("/")
+    reader_url = ctx.job.settings.get("reader_url")
+    if reader_url is not None:
+        if not isinstance(reader_url, str) or not reader_url:
+            raise ValueError("hn.reader_url must be a non-empty string")
+        parsed_reader = urlsplit(reader_url)
+        if parsed_reader.scheme not in {"http", "https"} or not parsed_reader.netloc:
+            raise ValueError("hn.reader_url must use http or https")
+        reader_url = reader_url.rstrip("/")
 
     story_ids = fetch_json(f"{base_url}/topstories.json")
     if not isinstance(story_ids, list):
@@ -22,9 +33,12 @@ def run(ctx: JobContext) -> dict[str, object]:
 
     fetched_at = utc_now()
     sources: list[Source] = []
+    reader_failures = 0
     for story_id in story_ids[:limit]:
         if type(story_id) is not int:
             raise ValueError("Hacker News returned an invalid story ID")
+        if ctx.database.status(f"hn:{story_id}") is not None:
+            continue
         item = fetch_json(f"{base_url}/item/{story_id}.json")
         if not isinstance(item, dict) or item.get("type") != "story":
             continue
@@ -36,17 +50,35 @@ def run(ctx: JobContext) -> dict[str, object]:
         url = item.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
         if not isinstance(url, str):
             raise ValueError(f"Hacker News returned an invalid URL for {story_id}")
+        content = str(item.get("text") or "")
+        if reader_url and not content:
+            try:
+                document, _ = fetch_content(
+                    f"{reader_url}/{url}", timeout=45, max_bytes=1_000_000
+                )
+            except (OSError, ValueError):
+                reader_failures += 1
+                continue
+            content = document.decode("utf-8", errors="replace").strip()[:MAX_READER_CHARS]
+            if not content:
+                reader_failures += 1
+                continue
         sources.append(
             Source.create(
                 provider="hn",
                 provider_id=str(story_id),
                 url=url,
                 title=title,
-                content=str(item.get("text") or ""),
+                content=content,
                 author=str(item.get("by") or "") or None,
                 fetched_at=fetched_at,
             )
         )
 
     inserted = ctx.database.add_sources(sources)
-    return {"job": "hn", "fetched": len(sources), "inserted": inserted}
+    return {
+        "job": "hn",
+        "fetched": len(sources),
+        "inserted": inserted,
+        "reader_failures": reader_failures,
+    }
