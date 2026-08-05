@@ -10,7 +10,7 @@ The writer receives only the selected records. Saved selections and published so
 
 ## Setup
 
-Requires macOS or Linux, Python 3.12 or newer, and a logged-in Codex or Kimi CLI. Run it from a source checkout; the prompts and example config are intentionally not bundled into a standalone wheel.
+Requires macOS or Linux, Python 3.12 or newer, and a logged-in Codex or Kimi CLI. Run it from a source checkout so the program can find its prompts and config.
 
 ```bash
 python3.12 -m venv .venv
@@ -18,7 +18,7 @@ python3.12 -m venv .venv
 cp config.example.yaml config.yaml
 ```
 
-The example config uses Codex. To use Kimi, change the `curator` and `writer` model to `kimi`, then log in with a private Kimi home:
+The example config uses Codex. Change both agent models to `kimi` to use Kimi, then log in with a private Kimi home:
 
 ```bash
 export KIMI_CODE_HOME="$HOME/.cron-agents-kimi"
@@ -35,20 +35,26 @@ Model commands are plain argument lists. Prompts go to stdin unless the list con
 ```bash
 .venv/bin/cron-agents run rss
 .venv/bin/cron-agents run hn
+.venv/bin/cron-agents run arxiv
+.venv/bin/cron-agents run papers
 .venv/bin/cron-agents run briefing
 ```
 
 The example HN job uses Jina Reader to turn each new linked article into text before curation. Remove `reader_url` to keep title-only HN records.
 
+The application rotates recent candidates across providers, so one busy feed cannot hide the rest.
+
 Dates use UTC. `--date YYYY-MM-DD` retries or rebuilds one date. Historical runs only consider sources fetched before the end of that UTC date; writer retries reuse the saved selection.
 
 ## Schedule
 
-The application runs one job and exits. Cron or systemd owns the schedule. These production examples target Linux; macOS is supported for local development and manual runs. Use one lock to serialize jobs:
+The application runs one job and exits. Cron or systemd owns the schedule. These production examples target Linux; you can use macOS for local development and manual runs. Use one lock to serialize jobs:
 
 ```cron
 0 */3 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run hn
 30 */6 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run rss
+0 7 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run arxiv
+30 7 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run papers
 0 21 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run briefing
 ```
 
@@ -87,7 +93,21 @@ jobs:
     module: my_jobs.example
 ```
 
-X works through the same contract, but its account cookies belong in a private deployment module. Reddit is also left out of the public core: its Data API requires approval and OAuth, plus removal of deleted user content.
+Private collectors can send normalized JSONL without sharing their credentials with the server:
+
+```bash
+private-x-command | ssh briefing-server 'cron-agents --config /srv/cron-agents/config.yaml import -'
+```
+
+Each line needs `provider`, `url`, and `title`. It may also contain `provider_id`, `content`, `author`, and `fetched_at`. Times must include a timezone, such as `2026-08-05T12:30:00+02:00`. Run the X command on the machine that holds the cookies; only its source records cross SSH.
+
+Use the same command with `--published` to seed links from old briefings. Those records stay in the ledger but never enter a new selection:
+
+```bash
+cron-agents import --published history.jsonl
+```
+
+The public core omits Reddit: its Data API requires approval and OAuth, plus removal of deleted user content.
 
 ## State
 
@@ -114,6 +134,9 @@ The tests use local fixtures and do not require a model login or network access.
 
 - [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive)
 - [Kimi command](https://moonshotai.github.io/kimi-code/en/reference/kimi-command) and [agent files](https://moonshotai.github.io/kimi-code/en/customization/agents.html)
+- [Hugging Face Daily Papers](https://huggingface.co/docs/huggingface_hub/en/package_reference/hf_api#huggingface_hub.HfApi.list_daily_papers)
+- [GitHub releases](https://docs.github.com/en/rest/releases/releases)
+- [arXiv API](https://info.arxiv.org/help/api/user-manual.html)
 - [Hacker News API](https://github.com/HackerNews/API)
 - [Jina Reader](https://github.com/jina-ai/reader)
 - [RSS 2.0](https://www.rssboard.org/rss-specification) and [Atom](https://www.rfc-editor.org/rfc/rfc4287.html)

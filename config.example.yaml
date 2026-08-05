@@ -47,8 +47,26 @@ jobs:
     module: cron_agents.jobs.rss
     limit_per_feed: 20
     feeds:
-      - name: github-changelog
-        url: https://github.blog/changelog/feed/
+      - name: codex-releases
+        url: https://github.com/openai/codex/releases.atom
+      - name: claude-code-releases
+        url: https://github.com/anthropics/claude-code/releases.atom
+      - name: kimi-cli-releases
+        url: https://github.com/MoonshotAI/Kimi-CLI/releases.atom
+      - name: llama-cpp-releases
+        url: https://github.com/ggml-org/llama.cpp/releases.atom
+
+  arxiv:
+    module: cron_agents.jobs.rss
+    limit_per_feed: 40
+    feeds:
+      - name: arxiv
+        url: https://export.arxiv.org/api/query?search_query=cat%3Acs.AI%20OR%20cat%3Acs.CL%20OR%20cat%3Acs.LG%20OR%20cat%3Acs.MA%20OR%20cat%3Acs.SE&start=0&max_results=40&sortBy=submittedDate&sortOrder=descending
+
+  papers:
+    module: cron_agents.jobs.papers
+    limit: 30
+    sort: trending
 
   hn:
     module: cron_agents.jobs.hn
@@ -66,7 +84,7 @@ jobs:
       business news, and incidents without a direct practical consequence.
       Write a few substantial stories rather than a link digest.
     lookback_hours: 36
-    candidate_limit: 100
+    candidate_limit: 60
     min_sources: 1
     max_sources: 3
     max_content_chars: 5000
