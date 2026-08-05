@@ -55,6 +55,10 @@ jobs:
         url: https://github.com/MoonshotAI/Kimi-CLI/releases.atom
       - name: llama-cpp-releases
         url: https://github.com/ggml-org/llama.cpp/releases.atom
+      # Add YouTube channel feeds here. Reuse this name so YouTube stays one
+      # provider when briefing candidates rotate across sources.
+      # - name: youtube
+      #   url: https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID
 
   arxiv:
     module: cron_agents.jobs.rss

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ def source(
     url: str | None = None,
     title: str | None = None,
     content: str | None = None,
+    source_published_at: str | None = None,
 ) -> Source:
     return Source.create(
         provider=provider,
@@ -22,6 +24,7 @@ def source(
         title=title or f"Title {provider_id}",
         content=content or (f"Detailed source content for {provider_id}. " * 5),
         fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at=source_published_at,
     )
 
 
@@ -51,6 +54,15 @@ def test_canonical_url_merges_x_and_twitter_status_links() -> None:
 
     assert canonical_url("https://twitter.com/user/status/123?s=20") == expected
     assert canonical_url("https://x.com/i/web/status/123/photo/1") == expected
+
+
+def test_canonical_url_merges_youtube_video_links() -> None:
+    expected = "https://www.youtube.com/watch?v=abc123_DEF"
+
+    assert canonical_url("https://youtu.be/abc123_DEF?t=12") == expected
+    assert canonical_url("https://youtube.com/shorts/abc123_DEF?feature=share") == expected
+    assert canonical_url("https://www.youtube.com/watch?v=abc123_DEF&utm_source=x") == expected
+    assert canonical_url("https://www.youtube.com/watch/?v=abc123_DEF&feature=share") == expected
 
 
 def test_arxiv_and_hugging_face_copies_share_one_ledger_row(tmp_path: Path) -> None:
@@ -114,6 +126,58 @@ def test_available_sources_excludes_reserved_and_published(tmp_path: Path) -> No
     assert [item.id for item in available] == [three.id]
     assert db.status(one.id) == "published"
     assert db.status(two.id) == "fetched"
+
+
+def test_available_sources_uses_source_time_without_breaking_historical_cutoff(
+    tmp_path: Path,
+) -> None:
+    db = database(tmp_path)
+    old_but_newly_fetched = source(
+        "old",
+        source_published_at="2026-07-01T12:00:00+00:00",
+    )
+    recent = source(
+        "recent",
+        source_published_at="2026-07-31T10:00:00+00:00",
+    )
+    db.add_sources([old_but_newly_fetched, recent])
+
+    current = db.available_sources(
+        since="2026-07-30T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+    historical = db.available_sources(
+        since="2026-06-30T00:00:00+00:00",
+        before="2026-07-02T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+
+    assert [item.id for item in current] == [recent.id]
+    assert historical == []
+
+
+def test_initialize_adds_source_time_to_an_existing_database(tmp_path: Path) -> None:
+    path = tmp_path / "state.db"
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE sources (
+                id TEXT PRIMARY KEY, provider TEXT NOT NULL, provider_id TEXT,
+                url TEXT NOT NULL UNIQUE, title TEXT NOT NULL, content TEXT NOT NULL,
+                author TEXT, fetched_at TEXT NOT NULL, fingerprint TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'fetched', published_at TEXT
+            )
+            """
+        )
+
+    Database(path).initialize()
+
+    with sqlite3.connect(path) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(sources)")}
+    assert "source_published_at" in columns
 
 
 def test_available_sources_rotates_across_providers(tmp_path: Path) -> None:

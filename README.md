@@ -42,6 +42,8 @@ Model commands are plain argument lists. Prompts go to stdin unless the list con
 
 The example HN job uses Jina Reader to turn each new linked article into text before curation. Remove `reader_url` to keep title-only HN records.
 
+YouTube channels expose Atom feeds. Add their feed URLs to the `rss.feeds` list with the shared name `youtube`; the collector keeps the video ID, channel, description, and publish time without a login or API key.
+
 The application rotates recent candidates across providers, so one busy feed cannot hide the rest.
 
 Dates use UTC. `--date YYYY-MM-DD` retries or rebuilds one date. Historical runs only consider sources fetched before the end of that UTC date; writer retries reuse the saved selection.
@@ -139,5 +141,6 @@ The tests use local fixtures and do not require a model login or network access.
 - [arXiv API](https://info.arxiv.org/help/api/user-manual.html)
 - [Hacker News API](https://github.com/HackerNews/API)
 - [Jina Reader](https://github.com/jina-ai/reader)
+- [YouTube Atom feeds](https://developers.google.com/youtube/v3/guides/push_notifications)
 - [RSS 2.0](https://www.rssboard.org/rss-specification) and [Atom](https://www.rfc-editor.org/rfc/rfc4287.html)
 - [Reddit Data API rules](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki)

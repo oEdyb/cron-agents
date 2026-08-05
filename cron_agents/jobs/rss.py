@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 from xml.etree import ElementTree
 
@@ -22,6 +24,40 @@ def _child(element: ElementTree.Element, *names: str) -> ElementTree.Element | N
 def _text(element: ElementTree.Element, *names: str) -> str:
     child = _child(element, *names)
     return "" if child is None else "".join(child.itertext()).strip()
+
+
+def _nested_text(element: ElementTree.Element, *names: str) -> str:
+    wanted = set(names)
+    for child in element.iter():
+        if child is not element and _name(child.tag) in wanted:
+            return "".join(child.itertext()).strip()
+    return ""
+
+
+def _author(element: ElementTree.Element) -> str | None:
+    creator = _text(element, "creator")
+    author = _child(element, "author")
+    if creator:
+        return creator
+    if author is None:
+        return None
+    return _text(author, "name") or "".join(author.itertext()).strip() or None
+
+
+def _published_at(element: ElementTree.Element) -> str | None:
+    value = _text(element, "published", "pubDate")
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat(timespec="seconds")
 
 
 def _link(element: ElementTree.Element, base_url: str) -> str:
@@ -86,9 +122,9 @@ def run(ctx: JobContext) -> dict[str, object]:
             link = _link(entry, entry_base)
             if not title or not link:
                 continue
-            provider_id = _text(entry, "guid", "id") or None
+            provider_id = _nested_text(entry, "videoId") or _text(entry, "guid", "id") or None
             content = _text(entry, "description", "summary", "content", "encoded")
-            author = _text(entry, "author", "creator") or None
+            content = content or _nested_text(entry, "description")
             sources.append(
                 Source.create(
                     provider=f"rss:{name}",
@@ -96,8 +132,9 @@ def run(ctx: JobContext) -> dict[str, object]:
                     url=link,
                     title=title,
                     content=content,
-                    author=author,
+                    author=_author(entry),
                     fetched_at=fetched_at,
+                    source_published_at=_published_at(entry),
                 )
             )
 
