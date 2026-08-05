@@ -29,18 +29,33 @@ def canonical_url(value: str) -> str:
         hostname = f"{hostname}:{port}"
 
     path = parsed.path or "/"
+    drop_query = False
+    paper = re.fullmatch(r"/papers/([^/]+)/?", path)
+    if hostname in {"huggingface.co", "www.huggingface.co"} and paper:
+        scheme = "https"
+        hostname = "arxiv.org"
+        path = f"/abs/{paper.group(1)}"
+        drop_query = True
+    status = re.fullmatch(r"/(?:i/web|[^/]+)/status/(\d+)(?:/.*)?", path)
+    x_hosts = {"twitter.com", "www.twitter.com", "mobile.twitter.com", "x.com", "www.x.com"}
+    if hostname in x_hosts and status:
+        scheme = "https"
+        hostname = "x.com"
+        path = f"/i/status/{status.group(1)}"
+        drop_query = True
     if hostname in {"arxiv.org", "www.arxiv.org", "export.arxiv.org"} and path.startswith(
         "/abs/"
     ):
         scheme = "https"
         hostname = "arxiv.org"
         path = re.sub(r"v\d+$", "", path)
+        drop_query = True
     if path != "/":
         path = path.rstrip("/")
 
     query = [
         (key, item)
-        for key, item in parse_qsl(parsed.query, keep_blank_values=True)
+        for key, item in parse_qsl("" if drop_query else parsed.query, keep_blank_values=True)
         if not key.lower().startswith("utm_") and key.lower() not in TRACKING_KEYS
     ]
     return urlunsplit((scheme, hostname, path, urlencode(sorted(query)), ""))

@@ -41,6 +41,16 @@ def test_canonical_url_merges_arxiv_versions_and_schemes() -> None:
     assert canonical_url("http://www.arxiv.org/abs/2607.26497v3") == (
         "https://arxiv.org/abs/2607.26497"
     )
+    assert canonical_url("https://huggingface.co/papers/2607.26497v2") == (
+        "https://arxiv.org/abs/2607.26497"
+    )
+
+
+def test_canonical_url_merges_x_and_twitter_status_links() -> None:
+    expected = "https://x.com/i/status/123"
+
+    assert canonical_url("https://twitter.com/user/status/123?s=20") == expected
+    assert canonical_url("https://x.com/i/web/status/123/photo/1") == expected
 
 
 def test_arxiv_and_hugging_face_copies_share_one_ledger_row(tmp_path: Path) -> None:
