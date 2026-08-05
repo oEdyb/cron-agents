@@ -30,6 +30,7 @@ def canonical_url(value: str) -> str:
 
     path = parsed.path or "/"
     drop_query = False
+    query_value = parsed.query
     paper = re.fullmatch(r"/papers/([^/]+)/?", path)
     if hostname in {"huggingface.co", "www.huggingface.co"} and paper:
         scheme = "https"
@@ -50,12 +51,33 @@ def canonical_url(value: str) -> str:
         hostname = "arxiv.org"
         path = re.sub(r"v\d+$", "", path)
         drop_query = True
+    youtube_id = None
+    if hostname == "youtu.be":
+        youtube_id = path.strip("/").split("/", 1)[0]
+    elif hostname in {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+    }:
+        if path.rstrip("/") == "/watch":
+            youtube_id = dict(parse_qsl(parsed.query)).get("v")
+        else:
+            video_path = re.fullmatch(r"/(?:embed|live|shorts)/([^/]+)/?", path)
+            youtube_id = video_path.group(1) if video_path else None
+    if youtube_id and re.fullmatch(r"[A-Za-z0-9_-]{6,20}", youtube_id):
+        scheme = "https"
+        hostname = "www.youtube.com"
+        path = "/watch"
+        query_value = urlencode({"v": youtube_id})
     if path != "/":
         path = path.rstrip("/")
 
     query = [
         (key, item)
-        for key, item in parse_qsl("" if drop_query else parsed.query, keep_blank_values=True)
+        for key, item in parse_qsl("" if drop_query else query_value, keep_blank_values=True)
         if not key.lower().startswith("utm_") and key.lower() not in TRACKING_KEYS
     ]
     return urlunsplit((scheme, hostname, path, urlencode(sorted(query)), ""))
@@ -75,6 +97,7 @@ class Source:
     content: str
     author: str | None
     fetched_at: str
+    source_published_at: str | None
     fingerprint: str
 
     @classmethod
@@ -88,6 +111,7 @@ class Source:
         content: str = "",
         author: str | None = None,
         fetched_at: str | None = None,
+        source_published_at: str | None = None,
     ) -> Source:
         provider = provider.strip()
         title = title.strip()
@@ -122,6 +146,7 @@ class Source:
             content=content,
             author=author.strip() if author else None,
             fetched_at=fetched_at or utc_now(),
+            source_published_at=source_published_at,
             fingerprint=fingerprint,
         )
 
@@ -134,6 +159,7 @@ class Source:
             "content": self.content[:max_content_chars],
             "author": self.author,
             "fetched_at": self.fetched_at,
+            "published_at": self.source_published_at,
         }
 
 
@@ -162,6 +188,7 @@ class Database:
                     content TEXT NOT NULL,
                     author TEXT,
                     fetched_at TEXT NOT NULL,
+                    source_published_at TEXT,
                     fingerprint TEXT NOT NULL UNIQUE,
                     status TEXT NOT NULL DEFAULT 'fetched'
                         CHECK (status IN ('fetched', 'published')),
@@ -169,6 +196,9 @@ class Database:
                 )
                 """
             )
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(sources)")}
+            if "source_published_at" not in columns:
+                connection.execute("ALTER TABLE sources ADD COLUMN source_published_at TEXT")
 
     def add_sources(self, sources: list[Source], *, published: bool = False) -> int:
         inserted = 0
@@ -179,8 +209,8 @@ class Database:
                     """
                     INSERT OR IGNORE INTO sources (
                         id, provider, provider_id, url, title, content, author,
-                        fetched_at, fingerprint, status, published_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        fetched_at, source_published_at, fingerprint, status, published_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         source.id,
@@ -191,6 +221,7 @@ class Database:
                         source.content,
                         source.author,
                         source.fetched_at,
+                        source.source_published_at,
                         source.fingerprint,
                         "published" if published else "fetched",
                         published_at,
@@ -234,12 +265,15 @@ class Database:
             rows = connection.execute(
                 """
                 SELECT id, provider, provider_id, url, title, content, author,
-                       fetched_at, fingerprint
+                       fetched_at, source_published_at, fingerprint
                 FROM sources
-                WHERE status = 'fetched' AND fetched_at >= ? AND fetched_at < ?
-                ORDER BY fetched_at DESC, id
+                WHERE status = 'fetched'
+                  AND fetched_at < ?
+                  AND COALESCE(source_published_at, fetched_at) >= ?
+                  AND COALESCE(source_published_at, fetched_at) < ?
+                ORDER BY COALESCE(source_published_at, fetched_at) DESC, fetched_at DESC, id
                 """,
-                (since, before),
+                (before, since, before),
             ).fetchall()
         buckets: dict[str, deque[Source]] = {}
         for row in rows:
@@ -269,7 +303,7 @@ class Database:
             rows = connection.execute(
                 f"""
                 SELECT id, provider, provider_id, url, title, content, author,
-                       fetched_at, fingerprint
+                       fetched_at, source_published_at, fingerprint
                 FROM sources
                 WHERE id IN ({placeholders})
                 """,  # noqa: S608 - placeholders are generated, not user input
@@ -313,5 +347,6 @@ class Database:
             content=row["content"],
             author=row["author"],
             fetched_at=row["fetched_at"],
+            source_published_at=row["source_published_at"],
             fingerprint=row["fingerprint"],
         )

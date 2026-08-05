@@ -68,6 +68,43 @@ def test_rss_collects_atom_fixture(tmp_path: Path) -> None:
     assert item.author == "Ada"
 
 
+def test_rss_collects_youtube_atom_metadata(tmp_path: Path, monkeypatch) -> None:
+    document = b"""\
+    <feed xmlns="http://www.w3.org/2005/Atom"
+          xmlns:yt="http://www.youtube.com/xml/schemas/2015"
+          xmlns:media="http://search.yahoo.com/mrss/">
+      <entry>
+        <id>yt:video:abc123</id>
+        <yt:videoId>abc123</yt:videoId>
+        <title>A useful video</title>
+        <link rel="alternate" href="https://www.youtube.com/watch?v=abc123" />
+        <author><name>Ada Videos</name><uri>https://youtube.test/ada</uri></author>
+        <published>2026-08-05T10:15:30Z</published>
+        <media:group><media:description>Concrete video details.</media:description></media:group>
+      </entry>
+    </feed>
+    """
+    monkeypatch.setattr(
+        rss,
+        "fetch_content",
+        lambda _url: (document, "https://www.youtube.com/feeds/videos.xml"),
+    )
+    monkeypatch.setattr(rss, "utc_now", lambda: "2026-08-05T12:00:00+00:00")
+    ctx = context(
+        tmp_path,
+        {"feeds": [{"name": "youtube", "url": "https://youtube.test/feed"}]},
+    )
+
+    result = rss.run(ctx)
+    item = ctx.database.get_sources(["rss-youtube:abc123"])[0]
+
+    assert result == {"job": "rss", "fetched": 1, "inserted": 1}
+    assert item.content == "Concrete video details."
+    assert item.author == "Ada Videos"
+    assert item.fetched_at == "2026-08-05T12:00:00+00:00"
+    assert item.source_published_at == "2026-08-05T10:15:30+00:00"
+
+
 def test_rss_uses_permalink_guid_when_link_is_missing(tmp_path: Path) -> None:
     feed = tmp_path / "feed.xml"
     feed.write_text(
