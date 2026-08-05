@@ -13,6 +13,7 @@ from cron_agents.db import Database
 
 @dataclass(frozen=True)
 class JobContext:
+    name: str
     root: Path
     config: Config
     job: JobConfig

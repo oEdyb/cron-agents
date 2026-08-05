@@ -9,7 +9,7 @@ import pytest
 from cron_agents import jobs
 from cron_agents.config import Config, JobConfig
 from cron_agents.db import Database, Source
-from cron_agents.jobs import JobContext, hn, rss
+from cron_agents.jobs import JobContext, hn, papers, rss
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -19,7 +19,7 @@ def context(tmp_path: Path, settings: dict[str, object]) -> JobContext:
     database.initialize()
     job = JobConfig(module="test", settings=settings)
     config = Config(root=tmp_path, state_dir=tmp_path, models={}, agents={}, jobs={})
-    return JobContext(tmp_path, config, job, database, date(2026, 7, 31))
+    return JobContext("rss", tmp_path, config, job, database, date(2026, 7, 31))
 
 
 def test_rss_collects_local_fixture(tmp_path: Path) -> None:
@@ -31,6 +31,18 @@ def test_rss_collects_local_fixture(tmp_path: Path) -> None:
     result = rss.run(ctx)
 
     assert result == {"job": "rss", "fetched": 3, "inserted": 3}
+
+
+def test_rss_uses_configured_job_name(tmp_path: Path) -> None:
+    ctx = context(
+        tmp_path,
+        {"feeds": [{"name": "fixture", "url": (FIXTURES / "feed.xml").as_uri()}]},
+    )
+    object.__setattr__(ctx, "name", "arxiv")
+
+    result = rss.run(ctx)
+
+    assert result["job"] == "arxiv"
 
 
 def test_rss_collects_atom_fixture(tmp_path: Path) -> None:
@@ -316,6 +328,53 @@ def test_hn_reader_skips_source_already_in_ledger(tmp_path: Path, monkeypatch) -
     result = hn.run(ctx)
 
     assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 0}
+
+
+def test_hugging_face_papers_collects_official_api_shape(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        lambda _url: [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "A useful paper",
+                    "summary": "A concrete abstract with measured results.",
+                    "authors": [
+                        {"name": "Ada"},
+                        {"name": "Grace"},
+                        {"name": "Linus"},
+                        {"name": "Margaret"},
+                        {"name": "Edsger"},
+                        {"name": "Barbara"},
+                        {"name": "Donald"},
+                    ],
+                    "upvotes": 42,
+                    "githubRepo": "https://github.com/example/paper",
+                    "projectPage": "https://example.com/project",
+                }
+            }
+        ],
+    )
+    ctx = context(tmp_path, {"limit": 10, "sort": "trending"})
+    object.__setattr__(ctx, "name", "papers")
+
+    result = papers.run(ctx)
+    item = ctx.database.get_sources(["hugging-face-papers:2607.26497"])[0]
+
+    assert result == {"job": "papers", "fetched": 1, "inserted": 1}
+    assert item.url == "https://arxiv.org/abs/2607.26497"
+    assert item.author == "Ada, Grace, Linus, Margaret, Edsger, and 2 others"
+    assert "42 Hugging Face upvotes" in item.content
+    assert "https://github.com/example/paper" in item.content
+
+
+def test_hugging_face_papers_rejects_bad_api_shape(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(papers, "fetch_json", lambda _url: {"paper": []})
+    ctx = context(tmp_path, {})
+
+    with pytest.raises(ValueError, match="invalid paper list"):
+        papers.run(ctx)
 
 
 def test_hn_reader_failure_does_not_store_title_only_source(tmp_path: Path, monkeypatch) -> None:

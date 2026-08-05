@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from cron_agents.db import Database, Source, canonical_url
 
 
@@ -33,6 +35,28 @@ def test_canonical_url_removes_tracking_and_fragment() -> None:
     value = "HTTPS://Example.COM:443/post/?b=2&utm_source=x&a=1#section"
 
     assert canonical_url(value) == "https://example.com/post?a=1&b=2"
+
+
+def test_canonical_url_merges_arxiv_versions_and_schemes() -> None:
+    assert canonical_url("http://www.arxiv.org/abs/2607.26497v3") == (
+        "https://arxiv.org/abs/2607.26497"
+    )
+
+
+def test_arxiv_and_hugging_face_copies_share_one_ledger_row(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    hugging_face = source(
+        "2607.26497",
+        provider="hugging-face-papers",
+        url="https://arxiv.org/abs/2607.26497",
+    )
+    arxiv = source(
+        "2607.26497v3",
+        provider="arxiv",
+        url="http://www.arxiv.org/abs/2607.26497v3",
+    )
+
+    assert db.add_sources([hugging_face, arxiv]) == 1
 
 
 def test_source_ids_are_safe_for_citations() -> None:
@@ -80,3 +104,51 @@ def test_available_sources_excludes_reserved_and_published(tmp_path: Path) -> No
     assert [item.id for item in available] == [three.id]
     assert db.status(one.id) == "published"
     assert db.status(two.id) == "fetched"
+
+
+def test_available_sources_rotates_across_providers(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    sources = [
+        source(
+            f"a-{number}",
+            provider="a",
+        )
+        for number in range(4)
+    ]
+    sources += [source(f"b-{number}", provider="b") for number in range(2)]
+    db.add_sources(sources)
+
+    available = db.available_sources(
+        since="2026-07-31T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=4,
+    )
+
+    assert [item.provider for item in available] == ["a", "b", "a", "b"]
+
+
+def test_published_import_marks_an_existing_url_seen(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    current = source("current", provider="rss", url="https://example.com/seen")
+    history = source("old", provider="history", url="https://example.com/seen?utm_source=old")
+    db.add_sources([current])
+
+    inserted = db.add_sources([history], published=True)
+
+    assert inserted == 0
+    assert db.status(current.id) == "published"
+
+
+def test_published_import_rejects_matches_across_different_rows(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    by_id = source("shared", url="https://example.com/by-id")
+    by_url = source("other", url="https://example.com/by-url")
+    db.add_sources([by_id, by_url])
+    ambiguous = source("shared", provider="test", url="https://example.com/by-url")
+
+    with pytest.raises(ValueError, match="matches multiple existing sources"):
+        db.add_sources([ambiguous], published=True)
+
+    assert db.status(by_id.id) == "fetched"
+    assert db.status(by_url.id) == "fetched"

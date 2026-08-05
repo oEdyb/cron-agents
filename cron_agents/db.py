@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sqlite3
+from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ def canonical_url(value: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError(f"source URL must use http or https: {value}")
 
+    scheme = parsed.scheme.lower()
     hostname = (parsed.hostname or "").lower()
     port = parsed.port
     default_port = (parsed.scheme, port) in {("http", 80), ("https", 443)}
@@ -27,6 +29,12 @@ def canonical_url(value: str) -> str:
         hostname = f"{hostname}:{port}"
 
     path = parsed.path or "/"
+    if hostname in {"arxiv.org", "www.arxiv.org", "export.arxiv.org"} and path.startswith(
+        "/abs/"
+    ):
+        scheme = "https"
+        hostname = "arxiv.org"
+        path = re.sub(r"v\d+$", "", path)
     if path != "/":
         path = path.rstrip("/")
 
@@ -35,7 +43,7 @@ def canonical_url(value: str) -> str:
         for key, item in parse_qsl(parsed.query, keep_blank_values=True)
         if not key.lower().startswith("utm_") and key.lower() not in TRACKING_KEYS
     ]
-    return urlunsplit((parsed.scheme.lower(), hostname, path, urlencode(sorted(query)), ""))
+    return urlunsplit((scheme, hostname, path, urlencode(sorted(query)), ""))
 
 
 def _normalized_text(value: str) -> str:
@@ -147,16 +155,17 @@ class Database:
                 """
             )
 
-    def add_sources(self, sources: list[Source]) -> int:
+    def add_sources(self, sources: list[Source], *, published: bool = False) -> int:
         inserted = 0
+        published_at = utc_now() if published else None
         with self._connect() as connection:
             for source in sources:
                 cursor = connection.execute(
                     """
                     INSERT OR IGNORE INTO sources (
                         id, provider, provider_id, url, title, content, author,
-                        fetched_at, fingerprint
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        fetched_at, fingerprint, status, published_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         source.id,
@@ -168,9 +177,34 @@ class Database:
                         source.author,
                         source.fetched_at,
                         source.fingerprint,
+                        "published" if published else "fetched",
+                        published_at,
                     ),
                 )
                 inserted += cursor.rowcount
+                if published and cursor.rowcount == 0:
+                    rows = connection.execute(
+                        """
+                        SELECT id FROM sources
+                        WHERE id = ? OR url = ? OR fingerprint = ?
+                        """,
+                        (source.id, source.url, source.fingerprint),
+                    ).fetchall()
+                    if not rows:
+                        raise RuntimeError(f"could not find duplicate source: {source.id}")
+                    matched_ids = {row["id"] for row in rows}
+                    if len(matched_ids) != 1:
+                        raise ValueError(
+                            f"published import {source.id} matches multiple existing sources"
+                        )
+                    connection.execute(
+                        """
+                        UPDATE sources
+                        SET status = 'published', published_at = COALESCE(published_at, ?)
+                        WHERE id = ?
+                        """,
+                        (published_at, matched_ids.pop()),
+                    )
         return inserted
 
     def available_sources(
@@ -192,7 +226,25 @@ class Database:
                 """,
                 (since, before),
             ).fetchall()
-        return [self._from_row(row) for row in rows if row["id"] not in excluded_ids][:limit]
+        buckets: dict[str, deque[Source]] = {}
+        for row in rows:
+            if row["id"] in excluded_ids:
+                continue
+            source = self._from_row(row)
+            buckets.setdefault(source.provider, deque()).append(source)
+
+        available: list[Source] = []
+        while len(available) < limit:
+            added = False
+            for bucket in buckets.values():
+                if bucket:
+                    available.append(bucket.popleft())
+                    added = True
+                    if len(available) == limit:
+                        break
+            if not added:
+                break
+        return available
 
     def get_sources(self, source_ids: list[str]) -> list[Source]:
         if not source_ids:

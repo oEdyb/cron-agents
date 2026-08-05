@@ -102,4 +102,4 @@ def run(ctx: JobContext) -> dict[str, object]:
             )
 
     inserted = ctx.database.add_sources(sources)
-    return {"job": "rss", "fetched": len(sources), "inserted": inserted}
+    return {"job": ctx.name, "fetched": len(sources), "inserted": inserted}
