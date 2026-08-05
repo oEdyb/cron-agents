@@ -53,8 +53,8 @@ The application runs one job and exits. Cron or systemd owns the schedule. These
 ```cron
 0 */3 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run hn
 30 */6 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run rss
+45 6 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run papers
 0 7 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run arxiv
-30 7 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run papers
 0 21 * * * cd /srv/cron-agents && flock -n .run.lock .venv/bin/cron-agents run briefing
 ```
 
