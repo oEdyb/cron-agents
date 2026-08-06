@@ -196,8 +196,8 @@ def run(ctx: JobContext) -> dict[str, object]:
 
 def _run(ctx: JobContext) -> dict[str, object]:
     settings = ctx.job.settings
-    minimum = _integer(settings, "min_sources", 3)
-    maximum = _integer(settings, "max_sources", 8)
+    minimum = _integer(settings, "min_sources", 1)
+    maximum = _integer(settings, "max_sources", 10)
     if minimum > maximum:
         raise ValueError("briefing.min_sources cannot exceed max_sources")
     candidate_limit = _integer(settings, "candidate_limit", 100)

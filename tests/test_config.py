@@ -17,6 +17,8 @@ def test_shipped_example_config_loads() -> None:
     assert config.models["kimi"].command[0] == "kimi"
     assert config.models["kimi"].command[-1] == "{prompt}"
     assert config.models["kimi"].output == "jsonl"
+    assert config.jobs["briefing"].settings["min_sources"] == 1
+    assert config.jobs["briefing"].settings["max_sources"] == 10
 
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:

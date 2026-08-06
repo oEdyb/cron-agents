@@ -46,6 +46,8 @@ YouTube channels expose Atom feeds. Add their feed URLs to the `rss.feeds` list 
 
 The application rotates recent candidates across providers, so one busy feed cannot hide the rest.
 
+The example allows 1–10 sources. The curator chooses the count from the evidence: one strong item on a quiet day or ten on a busy day. The writer gives major stories more space and keeps smaller signals compact.
+
 Dates use UTC. `--date YYYY-MM-DD` retries or rebuilds one date. Historical runs only consider sources fetched before the end of that UTC date; writer retries reuse the saved selection.
 
 ## Schedule
