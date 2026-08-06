@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 import pytest
+import yaml
 from conftest import read_log
 
 from cron_agents.cli import run_job
@@ -108,6 +109,19 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert all(source_id in writer_prompt for source_id in selected)
     assert rejected not in writer_prompt
     assert [event["kind"] for event in events] == ["curator", "writer"]
+
+
+def test_default_selection_range_is_one_to_ten(project) -> None:
+    project.data["jobs"]["briefing"].pop("min_sources")
+    project.data["jobs"]["briefing"].pop("max_sources")
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+    add_sources(project, 1, 10)
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    curator_prompt = read_log(project.log)[0]["prompt"]
+    assert result["sources"] == 2
+    assert "Select between 1 and 10 source IDs." in curator_prompt
 
 
 def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
