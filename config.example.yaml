@@ -83,9 +83,11 @@ jobs:
     writer: writer
     context: |
       Audience: a developer who builds with AI.
-      Prefer surprising tools, concrete mechanisms, measured results, open projects,
-      and experiments the reader can reproduce. Skip routine release notes, generic
-      business news, and incidents without a direct practical consequence.
+      Goal: find ideas the reader will want to understand, test, or show someone.
+      Prefer surprising tools, visible results, clear mechanisms, open projects, and
+      experiments the reader can reproduce. Treat links to current work as weak
+      context; they do not create interest on their own. Skip routine releases,
+      generic business news, and incidents without a direct practical consequence.
       Include every strong match. Skip filler and link-digest treatment.
     lookback_hours: 36
     candidate_limit: 60
