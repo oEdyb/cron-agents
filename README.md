@@ -64,6 +64,8 @@ The application runs one job and exits. Cron or systemd owns the schedule. These
 
 Run it as a dedicated user. Keep `config.yaml` untracked and CLI credentials in that user's private home.
 
+For a VPS deployment with model authentication, systemd timers, and output-only sync, read [DEPLOY.md](DEPLOY.md) before changing the host.
+
 ## Add a collector
 
 Create a module with one `run(ctx)` function:
@@ -136,7 +138,7 @@ The tests use local fixtures and do not require a model login or network access.
 
 ## References
 
-- [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive)
+- [Codex authentication](https://learn.chatgpt.com/docs/auth) and [non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode)
 - [Kimi command](https://moonshotai.github.io/kimi-code/en/reference/kimi-command) and [agent files](https://moonshotai.github.io/kimi-code/en/customization/agents.html)
 - [Hugging Face Daily Papers](https://huggingface.co/docs/huggingface_hub/en/package_reference/hf_api#huggingface_hub.HfApi.list_daily_papers)
 - [GitHub releases](https://docs.github.com/en/rest/releases/releases)
