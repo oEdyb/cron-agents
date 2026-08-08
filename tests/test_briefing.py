@@ -81,8 +81,12 @@ def test_document_escapes_untrusted_source_metadata() -> None:
     assert "[source:unknown]" not in document
     assert "<script>" not in document
     assert 'summary: "Curated daily briefing from 1 selected source."' in document
-    assert "https://example.com/a%29%3E%3Cscript%3Ealert%281%29%3C/script%3E" in document
-    briefing._validate_writer_output(document, [source.id])
+    assert (
+        "[Source](https://example.com/a%29%3E%3Cscript%3Ealert%281%29%3C/script%3E)"
+        in document
+    )
+    assert "## Sources" not in document
+    assert "[source:test:evil]" not in document
 
 
 def test_writer_receives_only_selected_sources(project) -> None:
@@ -97,13 +101,15 @@ def test_writer_receives_only_selected_sources(project) -> None:
     rejected = ({f"test:item-{number}" for number in range(1, 4)} - set(selected)).pop()
     assert result["recovered"] is False
     assert len(selected) == 2
-    assert all(f"[source:{source_id}]" in output for source_id in selected)
+    assert "[source:" not in output
+    assert output.count("[Source](") == len(selected)
+    assert all(f'  - "{source_id}"' in output for source_id in selected)
     assert "type: briefing" in output
     assert 'title: "Daily Briefing — 2026-07-31"' in output
     assert 'summary: "Curated daily briefing from 2 selected sources."' in output
     assert "status: generated" in output
     assert "tags: [briefing]" in output
-    assert "## Sources" in output
+    assert "## Sources" not in output
     assert all(f"]({source.url})" in output for source in sources if source.id in selected)
     assert "Briefing date: 2026-07-31" in writer_prompt
     assert all(source_id in writer_prompt for source_id in selected)

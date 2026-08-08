@@ -119,7 +119,7 @@ The public core omits Reddit: its Data API requires approval and OAuth, plus rem
 data/state.db                    normalized sources and published status
 data/selections/YYYY-MM-DD.json permanent source reservation for that briefing
 data/briefing.lock               internal briefing serialization lock
-briefings/YYYY-MM-DD.md         final briefing with selected source IDs
+briefings/YYYY-MM-DD.md         final briefing with clickable source links
 ```
 
 Delete one selection file only when you intend to abandon that briefing and release its sources.

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import fcntl
-import html
 import json
 import os
 import re
@@ -157,15 +156,19 @@ def _validate_writer_output(output: str, source_ids: list[str]) -> None:
         raise ValueError(f"writer omitted source IDs: {', '.join(missing)}")
 
 
+def _link_citations(body: str, sources: list[Source]) -> str:
+    source_ids = [source.id for source in sources]
+    _validate_writer_output(body, source_ids)
+    urls = {
+        source.id: quote(source.url, safe=":/?#@!$&'*+,;=%")
+        for source in sources
+    }
+    return CITATION.sub(lambda match: f"[Source]({urls[match.group(1)]})", body)
+
+
 def _document(run_date: str, sources: list[Source], body: str) -> str:
     metadata = "\n".join(f"  - {json.dumps(source.id)}" for source in sources)
-    references = []
-    for source in sources:
-        title = " ".join(source.title.split())
-        title = html.escape(title, quote=False)
-        title = title.replace("[", "&#91;").replace("]", "&#93;").replace("`", "&#96;")
-        url = quote(source.url, safe=":/?#@!$&'*+,;=%")
-        references.append(f"- [{title}]({url}) `[source:{source.id}]`")
+    linked_body = _link_citations(body, sources)
     title = json.dumps(f"Daily Briefing — {run_date}", ensure_ascii=False)
     source_word = "source" if len(sources) == 1 else "sources"
     summary = json.dumps(
@@ -181,8 +184,7 @@ def _document(run_date: str, sources: list[Source], body: str) -> str:
         "tags: [briefing]\n"
         f"source_ids:\n{metadata}\n"
         "---\n\n"
-        f"{body.strip()}\n\n"
-        f"## Sources\n\n{'\n'.join(references)}\n"
+        f"{linked_body.strip()}\n"
     )
 
 
@@ -277,9 +279,7 @@ def _run(ctx: JobContext) -> dict[str, object]:
         writer_name,
         _writer_prompt(sources, max_content_chars, context, run_date),
     )
-    _validate_writer_output(body, source_ids)
     document = _document(run_date, sources, body)
-    _validate_writer_output(document, source_ids)
     _atomic_write(output_path, document)
     ctx.database.mark_published(source_ids)
 
