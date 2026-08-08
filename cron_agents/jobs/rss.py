@@ -45,7 +45,7 @@ def _author(element: ElementTree.Element) -> str | None:
 
 
 def _published_at(element: ElementTree.Element) -> str | None:
-    value = _text(element, "published", "pubDate")
+    value = _text(element, "published") or _text(element, "updated") or _text(element, "pubDate")
     if not value:
         return None
     try:
@@ -53,11 +53,14 @@ def _published_at(element: ElementTree.Element) -> str | None:
     except ValueError:
         try:
             parsed = parsedate_to_datetime(value)
-        except (TypeError, ValueError):
+        except (OverflowError, TypeError, ValueError):
             return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC).isoformat(timespec="seconds")
+    try:
+        return parsed.astimezone(UTC).isoformat(timespec="seconds")
+    except (OverflowError, ValueError):
+        return None
 
 
 def _link(element: ElementTree.Element, base_url: str) -> str:
@@ -81,7 +84,7 @@ def _link(element: ElementTree.Element, base_url: str) -> str:
 def _entries(document: bytes, base_url: str) -> list[tuple[ElementTree.Element, str]]:
     try:
         root = ElementTree.fromstring(document)
-    except ElementTree.ParseError as error:
+    except (ElementTree.ParseError, LookupError) as error:
         raise ValueError("invalid RSS or Atom XML") from error
     entry_name = "entry" if _name(root.tag) == "feed" else "item"
     entries: list[tuple[ElementTree.Element, str]] = []
@@ -94,7 +97,10 @@ def _entries(document: bytes, base_url: str) -> list[tuple[ElementTree.Element, 
         for child in element:
             visit(child, element_base)
 
-    visit(root, base_url)
+    try:
+        visit(root, base_url)
+    except RecursionError as error:
+        raise ValueError("invalid RSS or Atom XML") from error
     return entries
 
 
@@ -108,6 +114,7 @@ def run(ctx: JobContext) -> dict[str, object]:
 
     fetched_at = utc_now()
     sources: list[Source] = []
+    failures: list[tuple[str, Exception]] = []
     for feed in feeds:
         if not isinstance(feed, dict):
             raise ValueError("each RSS feed must be a mapping")
@@ -116,27 +123,37 @@ def run(ctx: JobContext) -> dict[str, object]:
         if not isinstance(name, str) or not name or not isinstance(url, str) or not url:
             raise ValueError("each RSS feed needs name and url")
 
-        document, document_url = fetch_content(url)
-        for entry, entry_base in _entries(document, document_url)[:limit]:
-            title = _text(entry, "title")
-            link = _link(entry, entry_base)
-            if not title or not link:
-                continue
-            provider_id = _nested_text(entry, "videoId") or _text(entry, "guid", "id") or None
-            content = _text(entry, "description", "summary", "content", "encoded")
-            content = content or _nested_text(entry, "description")
-            sources.append(
-                Source.create(
-                    provider=f"rss:{name}",
-                    provider_id=provider_id,
-                    url=link,
-                    title=title,
-                    content=content,
-                    author=_author(entry),
-                    fetched_at=fetched_at,
-                    source_published_at=_published_at(entry),
+        try:
+            document, document_url = fetch_content(url)
+            for entry, entry_base in _entries(document, document_url)[:limit]:
+                title = _text(entry, "title")
+                link = _link(entry, entry_base)
+                if not title or not link:
+                    continue
+                provider_id = (
+                    _nested_text(entry, "videoId") or _text(entry, "guid", "id") or None
                 )
-            )
+                content = _text(entry, "description", "summary", "content", "encoded")
+                content = content or _nested_text(entry, "description")
+                sources.append(
+                    Source.create(
+                        provider=f"rss:{name}",
+                        provider_id=provider_id,
+                        url=link,
+                        title=title,
+                        content=content,
+                        author=_author(entry),
+                        fetched_at=fetched_at,
+                        source_published_at=_published_at(entry),
+                    )
+                )
+        except Exception as error:
+            failures.append((name, error))
 
     inserted = ctx.database.add_sources(sources)
+    if failures:
+        detail = "; ".join(f"{name}: {error}" for name, error in failures)
+        raise RuntimeError(f"RSS feed failures after saving healthy feeds: {detail}") from failures[
+            0
+        ][1]
     return {"job": ctx.name, "fetched": len(sources), "inserted": inserted}

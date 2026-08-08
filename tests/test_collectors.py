@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from http.client import IncompleteRead
 from io import BytesIO
 from pathlib import Path
 
@@ -66,6 +67,7 @@ def test_rss_collects_atom_fixture(tmp_path: Path) -> None:
     assert item.title == "Atom entry"
     assert item.content == "Useful Atom details."
     assert item.author == "Ada"
+    assert item.source_published_at == "2026-07-31T08:00:00+00:00"
 
 
 def test_rss_collects_youtube_atom_metadata(tmp_path: Path, monkeypatch) -> None:
@@ -189,8 +191,116 @@ def test_rss_rejects_malformed_xml(tmp_path: Path, monkeypatch) -> None:
         {"feeds": [{"name": "fixture", "url": "https://example.com/feed.xml"}]},
     )
 
-    with pytest.raises(ValueError, match="invalid RSS or Atom XML"):
+    with pytest.raises(RuntimeError, match="fixture: invalid RSS or Atom XML"):
         rss.run(ctx)
+
+
+def test_rss_saves_healthy_feeds_when_another_feed_fails(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.xml"
+    broken.write_text("<rss>")
+    ctx = context(
+        tmp_path,
+        {
+            "feeds": [
+                {"name": "broken", "url": broken.as_uri()},
+                {"name": "fixture", "url": (FIXTURES / "feed.xml").as_uri()},
+            ]
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="broken"):
+        rss.run(ctx)
+
+    saved = ctx.database.available_sources(
+        since="",
+        before="9999-12-31T23:59:59+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+    assert {item.title for item in saved} == {
+        "First useful release",
+        "Second useful release",
+        "Rejected candidate",
+    }
+
+
+def test_rss_rejects_excessively_nested_xml(tmp_path: Path, monkeypatch) -> None:
+    depth = 1500
+    document = b"<rss>" + (b"<group>" * depth) + (b"</group>" * depth) + b"</rss>"
+    monkeypatch.setattr(
+        rss,
+        "fetch_content",
+        lambda _url: (document, "https://example.com/feed.xml"),
+    )
+    ctx = context(
+        tmp_path,
+        {"feeds": [{"name": "deep", "url": "https://example.com/feed.xml"}]},
+    )
+
+    with pytest.raises(RuntimeError, match="deep: invalid RSS or Atom XML"):
+        rss.run(ctx)
+
+
+def test_rss_saves_healthy_feed_after_truncated_http_response(
+    tmp_path: Path, monkeypatch
+) -> None:
+    real_fetch = rss.fetch_content
+
+    def fetch(url: str):
+        if url == "https://example.com/broken.xml":
+            raise IncompleteRead(b"partial", 100)
+        return real_fetch(url)
+
+    monkeypatch.setattr(rss, "fetch_content", fetch)
+    ctx = context(
+        tmp_path,
+        {
+            "feeds": [
+                {"name": "fixture", "url": (FIXTURES / "feed.xml").as_uri()},
+                {"name": "broken", "url": "https://example.com/broken.xml"},
+            ]
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="broken"):
+        rss.run(ctx)
+
+    saved = ctx.database.available_sources(
+        since="",
+        before="9999-12-31T23:59:59+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+    assert len(saved) == 3
+
+
+def test_rss_keeps_source_with_timestamp_outside_utc_range(tmp_path: Path, monkeypatch) -> None:
+    document = b"""\
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <entry>
+        <id>extreme-time</id>
+        <title>Useful despite its timestamp</title>
+        <link href="https://example.com/extreme-time" />
+        <published>0001-01-01T00:00:00+14:00</published>
+        <summary>Concrete details.</summary>
+      </entry>
+    </feed>
+    """
+    monkeypatch.setattr(
+        rss,
+        "fetch_content",
+        lambda _url: (document, "https://example.com/feed.xml"),
+    )
+    ctx = context(
+        tmp_path,
+        {"feeds": [{"name": "time", "url": "https://example.com/feed.xml"}]},
+    )
+
+    result = rss.run(ctx)
+    item = ctx.database.get_sources(["rss-time:extreme-time"])[0]
+
+    assert result == {"job": "rss", "fetched": 1, "inserted": 1}
+    assert item.source_published_at is None
 
 
 def test_hn_collects_stories(tmp_path: Path, monkeypatch) -> None:
