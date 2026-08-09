@@ -1,16 +1,12 @@
 # cron-agents
 
-I built cron-agents to turn the feeds I care about into one briefing I want to read.
+I built cron-agents to turn the feeds I care about into one daily briefing.
 
 ```text
-collectors → SQLite → curator → selection.json → writer → briefing.md
+collectors → SQLite → curator → writer → briefing.md
 ```
 
-Collectors store the raw sources, the curator chooses what matters, and the writer sees only those picks. SQLite records every published source, so the same source cannot appear twice.
-
-Collectors don't use a model. A run without a saved selection makes two model calls: curator, then writer.
-
-> I tested the full setup from an empty folder: 119 records went in, the curator chose 10, and all 10 links matched the selected database records.
+The curator chooses the sources. The writer only receives those sources, and SQLite prevents repeats.
 
 ## Set it up with an agent
 
