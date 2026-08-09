@@ -112,6 +112,7 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert "## Sources" not in output
     assert all(f"]({source.url})" in output for source in sources if source.id in selected)
     assert "Briefing date: 2026-07-31" in writer_prompt
+    assert "Use web search and direct page fetching" in writer_prompt
     assert all(source_id in writer_prompt for source_id in selected)
     assert rejected not in writer_prompt
     assert [event["kind"] for event in events] == ["curator", "writer"]

@@ -4,7 +4,7 @@ I built cron-agents to turn the feeds I care about into one daily briefing.
 
 ![RSS, HN, papers, X, and YouTube flow through saved links, a curator, and a writer into one briefing; used links cannot return](assets/flow.svg)
 
-The curator chooses the sources. The writer only receives those sources, and SQLite prevents repeats.
+The curator chooses the sources. The writer receives only those records, researches their links, and writes the briefing. SQLite prevents repeats.
 
 ## Set it up with an agent
 
@@ -17,7 +17,8 @@ Ask me which sources and topics I care about.
 Keep config.yaml and credentials private.
 Use the existing commands and config without adding Docker or extra services.
 Run the test suite, each collector, and one briefing.
-Verify that the writer receives only the sources selected by the curator,
+Verify that the writer starts from only the sources selected by the curator,
+can research those links with web search and direct page fetching,
 the source links work, and published sources cannot be selected again.
 Do not schedule it until these checks pass.
 Then ask what time I want it to run each day.
@@ -57,7 +58,7 @@ Collect sources, then run the curator and writer:
 .venv/bin/cron-agents run briefing
 ```
 
-Open `briefings/YYYY-MM-DD.md`. The curator chooses between one and ten sources, and the writer sees only those records. Each source link appears beside the text it supports.
+Open `briefings/YYYY-MM-DD.md`. The curator chooses between one and ten sources. The writer researches only those stories, then puts each source link beside the text it supports.
 
 ## Run it every day
 
@@ -91,7 +92,7 @@ Use these files and fields:
 | New source type | Copy a collector module into `cron_agents/jobs/`, then set the new job's `module` field in `config.yaml` |
 | Private source | Send newline-delimited JSON into `.venv/bin/cron-agents import -` |
 
-To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, and set both model values to `kimi`. Add the same variable to its schedule.
+To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, set the curator model to `kimi`, and the writer model to `kimi-web`. Add the same variable to its schedule.
 
 Git ignores `.venv/`, `config.yaml`, `data/`, `briefings/`, and local install metadata. Keep `data/state.db`: it records published sources so they cannot appear in another briefing.
 

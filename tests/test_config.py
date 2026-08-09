@@ -14,9 +14,18 @@ def test_shipped_example_config_loads() -> None:
     config = load_config(root / "config.example.yaml")
 
     assert config.models["codex"].command[-1] == "-"
+    assert "--strict-config" in config.models["codex"].command
+    assert 'web_search="disabled"' in config.models["codex"].command
+    assert config.models["codex-web"].command[-1] == "-"
+    assert "--strict-config" in config.models["codex-web"].command
+    assert 'web_search="live"' in config.models["codex-web"].command
+    assert "features.shell_tool=false" in config.models["codex-web"].command
     assert config.models["kimi"].command[0] == "kimi"
     assert config.models["kimi"].command[-1] == "{prompt}"
     assert config.models["kimi"].output == "jsonl"
+    assert config.models["kimi-web"].command[0] == "kimi"
+    assert config.agents["curator"].model == "codex"
+    assert config.agents["writer"].model == "codex-web"
     assert config.jobs["briefing"].settings["min_sources"] == 1
     assert config.jobs["briefing"].settings["max_sources"] == 10
 
@@ -27,6 +36,15 @@ def test_kimi_agent_disables_tools_and_subagents() -> None:
     frontmatter = yaml.safe_load(parts[1])
 
     assert frontmatter["tools"] == []
+    assert frontmatter["subagents"] == []
+
+
+def test_kimi_writer_has_only_search_and_fetch_tools() -> None:
+    root = Path(__file__).parent.parent
+    parts = (root / "prompts" / "kimi-web.md").read_text().split("---", 2)
+    frontmatter = yaml.safe_load(parts[1])
+
+    assert frontmatter["tools"] == ["WebSearch", "FetchURL"]
     assert frontmatter["subagents"] == []
 
 
