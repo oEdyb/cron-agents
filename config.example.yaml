@@ -9,6 +9,7 @@ models:
       - --skip-git-repo-check
       - --ignore-user-config
       - --ignore-rules
+      - --strict-config
       - --sandbox
       - read-only
       - -c
@@ -17,6 +18,27 @@ models:
       - agents.enabled=false
       - -c
       - 'web_search="disabled"'
+      - '-'
+    timeout: 600
+    env: [PATH, HOME, CODEX_HOME]
+
+  codex-web:
+    command:
+      - codex
+      - exec
+      - --ephemeral
+      - --skip-git-repo-check
+      - --ignore-user-config
+      - --ignore-rules
+      - --strict-config
+      - --sandbox
+      - read-only
+      - -c
+      - features.shell_tool=false
+      - -c
+      - agents.enabled=false
+      - -c
+      - 'web_search="live"'
       - '-'
     timeout: 600
     env: [PATH, HOME, CODEX_HOME]
@@ -34,12 +56,25 @@ models:
     env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
     output: jsonl
 
+  kimi-web:
+    command:
+      - kimi
+      - --output-format
+      - stream-json
+      - --agent-file
+      - prompts/kimi-web.md
+      - -p
+      - '{prompt}'
+    timeout: 600
+    env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
+    output: jsonl
+
 agents:
   curator:
     model: codex
     prompt: prompts/curator.md
   writer:
-    model: codex
+    model: codex-web
     prompt: prompts/writer.md
 
 jobs:
