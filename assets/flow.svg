@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" role="img" aria-labelledby="title desc">
+  <title id="title">cron-agents briefing flow</title>
+  <desc id="desc">Feeds enter SQLite, a curator selects sources, and a writer creates a Markdown briefing.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#58a6ff"/>
+    </marker>
+    <style>
+      .label { fill: #f0f6fc; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 28px; font-weight: 600; }
+      .card { fill: #161b22; stroke: #30363d; stroke-width: 2; }
+      .flow { fill: none; stroke: #58a6ff; stroke-width: 4; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="800" height="220" rx="24" fill="#0d1117"/>
+
+  <rect x="28" y="72" width="124" height="76" rx="16" class="card"/>
+  <circle cx="54" cy="91" r="6" fill="#58a6ff"/>
+  <circle cx="72" cy="91" r="6" fill="#a371f7"/>
+  <circle cx="90" cy="91" r="6" fill="#3fb950"/>
+  <text x="90" y="128" text-anchor="middle" class="label">feeds</text>
+
+  <path d="M 160 110 H 192" class="flow"/>
+
+  <path d="M 202 82 C 202 65 314 65 314 82 V 138 C 314 155 202 155 202 138 Z" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+  <ellipse cx="258" cy="82" rx="56" ry="17" fill="#21262d" stroke="#30363d" stroke-width="2"/>
+  <text x="258" y="121" text-anchor="middle" class="label">SQLite</text>
+
+  <path d="M 322 110 H 354" class="flow"/>
+
+  <rect x="364" y="72" width="124" height="76" rx="16" fill="#1f1633" stroke="#a371f7" stroke-width="2"/>
+  <text x="426" y="120" text-anchor="middle" class="label">curator</text>
+
+  <path d="M 496 110 H 528" class="flow"/>
+
+  <rect x="538" y="72" width="124" height="76" rx="16" fill="#10291b" stroke="#3fb950" stroke-width="2"/>
+  <text x="600" y="120" text-anchor="middle" class="label">writer</text>
+
+  <path d="M 670 110 H 702" class="flow"/>
+
+  <path d="M 712 50 H 756 L 776 70 V 160 H 712 Z" fill="#f0f6fc"/>
+  <path d="M 756 50 V 70 H 776" fill="#c9d1d9"/>
+  <rect x="727" y="90" width="34" height="5" rx="2.5" fill="#8c959f"/>
+  <rect x="727" y="107" width="27" height="5" rx="2.5" fill="#8c959f"/>
+  <rect x="727" y="124" width="32" height="5" rx="2.5" fill="#8c959f"/>
+  <text x="744" y="195" text-anchor="middle" class="label" font-size="24">briefing</text>
+</svg>
