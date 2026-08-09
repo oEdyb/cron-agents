@@ -2,7 +2,7 @@
 
 I built cron-agents to turn the feeds I care about into one daily briefing.
 
-![Collectors feed SQLite, a curator selects sources, and a writer creates the briefing](assets/flow.svg)
+![RSS, HN, papers, X, and YouTube flow through saved links, a curator, and a writer into one briefing; used links cannot return](assets/flow.svg)
 
 The curator chooses the sources. The writer only receives those sources, and SQLite prevents repeats.
 
