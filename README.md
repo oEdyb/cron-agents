@@ -10,6 +10,23 @@ The writer receives only the selected records. Saved selections and published so
 
 Collectors do not use a model. A new briefing normally makes two model calls: one for the curator and one for the writer.
 
+## Set it up with a coding agent
+
+Paste this prompt into Codex, Claude Code, Kimi, or another coding agent:
+
+```text
+Set up cron-agents from https://github.com/oEdyb/cron-agents on this machine.
+Follow README.md and use Codex unless I ask for Kimi.
+Ask me which sources and topics I care about.
+Keep config.yaml and all credentials private.
+Use the existing CLI and config without adding Docker or extra services.
+Run the test suite, each collector, and one briefing.
+Verify that the writer receives only the sources selected by the curator,
+the source links work, and published sources cannot be selected again.
+Do not schedule it until these checks pass.
+Then ask what time I want it to run each day.
+```
+
 ## Run your first briefing
 
 You need macOS or Linux, Git, Python 3.12 or newer, and either Codex or Kimi Code CLI. The default config uses Codex.
