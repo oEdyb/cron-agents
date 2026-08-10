@@ -125,7 +125,7 @@ jobs:
       generic business news, and incidents without a direct practical consequence.
       Include every strong match. Skip filler and link-digest treatment.
     lookback_hours: 36
-    candidate_limit: 60
+    candidate_limit: 1000
     min_sources: 1
     max_sources: 10
     max_content_chars: 5000

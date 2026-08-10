@@ -28,6 +28,9 @@ def test_shipped_example_config_loads() -> None:
     assert config.agents["writer"].model == "codex-web"
     assert config.jobs["briefing"].settings["min_sources"] == 1
     assert config.jobs["briefing"].settings["max_sources"] == 10
+    assert config.jobs["briefing"].settings["candidate_limit"] == 1000
+    curator_prompt = (root / "prompts" / "curator.md").read_text()
+    assert "A busy feed is not an important feed." in curator_prompt
 
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:

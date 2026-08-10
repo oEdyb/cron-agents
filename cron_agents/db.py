@@ -151,12 +151,19 @@ class Source:
         )
 
     def prompt_record(self, max_content_chars: int) -> dict[str, str | None]:
+        content = self.content[:max_content_chars]
+        if self.provider == "x":
+            position = content.find(self.title)
+            if 0 <= position <= 80:
+                before = content[:position].rstrip()
+                after = content[position + len(self.title) :].lstrip()
+                content = "\n".join(part for part in (before, after) if part)
         return {
             "id": self.id,
             "provider": self.provider,
             "url": self.url,
             "title": self.title,
-            "content": self.content[:max_content_chars],
+            "content": content,
             "author": self.author,
             "fetched_at": self.fetched_at,
             "published_at": self.source_published_at,
