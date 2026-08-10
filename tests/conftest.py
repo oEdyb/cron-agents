@@ -55,7 +55,6 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                 "writer": "writer",
                 "context": "Fixture briefing.",
                 "lookback_hours": 36,
-                "candidate_limit": 100,
                 "min_sources": 2,
                 "max_sources": 2,
                 "max_content_chars": 1000,

@@ -42,6 +42,20 @@ def add_sources(
     return sources
 
 
+def x_source(provider_id: str, title: str, quoted: str | None = None) -> Source:
+    lines = ["X following feed.", title]
+    if quoted:
+        lines.append(f"Quoted post: {quoted}")
+    lines.append("Metrics: 20 likes, 500 views, 0 bookmarks.")
+    return Source.create(
+        provider="x",
+        provider_id=provider_id,
+        url=f"https://x.com/example/status/{provider_id}",
+        title=title,
+        content="\n".join(lines),
+    )
+
+
 def selection(project, run_date: str) -> dict[str, object]:
     path = project.root / "data" / "selections" / f"{run_date}.json"
     return json.loads(path.read_text())
@@ -129,6 +143,53 @@ def test_default_selection_range_is_one_to_ten(project) -> None:
     curator_prompt = read_log(project.log)[0]["prompt"]
     assert result["sources"] == 2
     assert "Select between 1 and 10 source IDs." in curator_prompt
+
+
+def test_default_candidate_pool_is_not_cut_to_the_newest_sixty(project) -> None:
+    add_sources(project, 1, 125)
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    prompt = read_log(project.log)[0]["prompt"]
+    records_json = prompt.split("CANDIDATE_SOURCES=", 1)[1]
+    records = json.loads(records_json)
+    assert len(records) == 125
+    assert records_json.startswith('[{"id":')
+
+
+def test_x_prompt_record_does_not_repeat_the_post_text() -> None:
+    source = x_source(
+        "123",
+        "Claude Code can control an iPhone",
+        "No jailbreak is needed.",
+    )
+
+    record = source.prompt_record(5000)
+
+    assert record["content"] == (
+        "X following feed.\n"
+        "Quoted post: No jailbreak is needed.\n"
+        "Metrics: 20 likes, 500 views, 0 bookmarks."
+    )
+
+
+def test_curator_skips_x_posts_without_enough_text() -> None:
+    noise = [
+        x_source("link", "https://t.co/example"),
+        x_source("reaction", "Literally"),
+        x_source("short-1", "This is wild"),
+        x_source("short-2", "Could not agree more"),
+        x_source("short-3", "Wow this changes everything"),
+        x_source("trivial-quote", "So true", "Exactly"),
+    ]
+    useful_quote = x_source(
+        "quote", "Wow", "Claude Code can control an iPhone without a jailbreak."
+    )
+    useful = x_source("useful", "Claude Code can control an iPhone without a jailbreak")
+
+    candidates = briefing._useful_candidates([*noise, useful_quote, useful])
+
+    assert [source.id for source in candidates] == [useful_quote.id, useful.id]
 
 
 def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
