@@ -16,7 +16,9 @@ def test_shipped_example_config_loads() -> None:
     for name in ("codex", "codex-web"):
         command = config.models[name].command
         assert command[command.index("--model") + 1] == "gpt-5.6-sol"
-        assert 'model_reasoning_effort="xhigh"' in command
+        reasoning = 'model_reasoning_effort="xhigh"'
+        assert command.count(reasoning) == 1
+        assert command[command.index(reasoning) - 1] == "-c"
     assert config.models["codex"].command[-1] == "-"
     assert "--strict-config" in config.models["codex"].command
     assert 'web_search="disabled"' in config.models["codex"].command
