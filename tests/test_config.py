@@ -29,8 +29,16 @@ def test_shipped_example_config_loads() -> None:
     assert config.jobs["briefing"].settings["min_sources"] == 1
     assert config.jobs["briefing"].settings["max_sources"] == 10
     assert config.jobs["briefing"].settings["candidate_limit"] == 1000
+    assert config.jobs["papers"].settings == {}
     curator_prompt = (root / "prompts" / "curator.md").read_text()
+    writer_prompt = (root / "prompts" / "writer.md").read_text()
     assert "A busy feed is not an important feed." in curator_prompt
+    assert "short daily lesson" in curator_prompt
+    assert "learn by doing" in curator_prompt
+    assert "few ideas that make the rest click" in writer_prompt
+    assert "technical friend" in writer_prompt
+    assert "## Try it" in writer_prompt
+    assert "what to measure" in writer_prompt
 
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:

@@ -260,6 +260,42 @@ class Database:
                     )
         return inserted
 
+    def refresh_fetched_sources(self, sources: list[Source]) -> int:
+        refreshed = 0
+        with self._connect() as connection:
+            for source in sources:
+                rows = connection.execute(
+                    """
+                    SELECT id FROM sources
+                    WHERE id = ? OR url = ? OR fingerprint = ?
+                    """,
+                    (source.id, source.url, source.fingerprint),
+                ).fetchall()
+                if not rows:
+                    continue
+                matched_ids = {row["id"] for row in rows}
+                if len(matched_ids) != 1:
+                    raise ValueError(f"source {source.id} matches multiple existing sources")
+                cursor = connection.execute(
+                    """
+                    UPDATE sources
+                    SET title = ?, content = ?, author = ?, fetched_at = ?,
+                        source_published_at = ?, fingerprint = ?
+                    WHERE id = ? AND status = 'fetched'
+                    """,
+                    (
+                        source.title,
+                        source.content,
+                        source.author,
+                        source.fetched_at,
+                        source.source_published_at,
+                        source.fingerprint,
+                        matched_ids.pop(),
+                    ),
+                )
+                refreshed += cursor.rowcount
+        return refreshed
+
     def available_sources(
         self,
         *,

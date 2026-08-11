@@ -104,8 +104,6 @@ jobs:
 
   papers:
     module: cron_agents.jobs.papers
-    limit: 30
-    sort: trending
 
   hn:
     module: cron_agents.jobs.hn
@@ -118,12 +116,16 @@ jobs:
     writer: writer
     context: |
       Audience: a developer who builds with AI.
-      Goal: find ideas the reader will want to understand, test, or show someone.
+      Goal: teach the reader something useful in a short daily lesson.
       Prefer surprising tools, visible results, clear mechanisms, open projects, and
       experiments the reader can reproduce. Treat links to current work as weak
       context; they do not create interest on their own. Skip routine releases,
       generic business news, and incidents without a direct practical consequence.
-      Include every strong match. Skip filler and link-digest treatment.
+      Assume the reader knows common AI and software terms. Explain uncommon ideas
+      with plain words and one concrete example. Focus on the few ideas that make
+      the rest click. Prefer ideas the reader can test and learn by doing. Learning
+      comes first; a useful project or content idea can follow. Include every strong
+      match and skip filler.
     lookback_hours: 36
     candidate_limit: 1000
     min_sources: 1
