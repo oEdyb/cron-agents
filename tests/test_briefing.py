@@ -132,7 +132,7 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert [event["kind"] for event in events] == ["curator", "writer"]
 
 
-def test_default_selection_range_is_one_to_ten(project) -> None:
+def test_default_selection_has_no_fixed_maximum(project) -> None:
     project.data["jobs"]["briefing"].pop("min_sources")
     project.data["jobs"]["briefing"].pop("max_sources")
     project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
@@ -142,7 +142,32 @@ def test_default_selection_range_is_one_to_ten(project) -> None:
 
     curator_prompt = read_log(project.log)[0]["prompt"]
     assert result["sources"] == 2
-    assert "Select between 1 and 10 source IDs." in curator_prompt
+    assert "Select at least 1 source ID." in curator_prompt
+    assert "There is no target count" in curator_prompt
+    assert "Select between" not in curator_prompt
+
+
+def test_default_selection_accepts_more_than_ten_sources(project, monkeypatch) -> None:
+    project.data["jobs"]["briefing"].pop("max_sources")
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+    monkeypatch.setenv("MODEL_SELECT_ALL", "1")
+    add_sources(project, 1, 12)
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert result["sources"] == 12
+    assert len(selection(project, "2026-07-31")["source_ids"]) == 12
+
+
+def test_explicit_maximum_is_still_enforced(project, monkeypatch) -> None:
+    monkeypatch.setenv("MODEL_SELECT_ALL", "1")
+    add_sources(project, 1, 3)
+
+    with pytest.raises(ValueError, match="curator must select at most 2 sources"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    curator_prompt = read_log(project.log)[0]["prompt"]
+    assert "Select between 2 and 2 source IDs." in curator_prompt
 
 
 def test_default_candidate_pool_is_not_cut_to_the_newest_sixty(project) -> None:

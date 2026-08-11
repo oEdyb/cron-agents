@@ -16,6 +16,8 @@ if kind == "curator":
     records = json.loads(prompt.split("CANDIDATE_SOURCES=", 1)[1])
     if os.environ.get("MODEL_INVALID_CURATOR"):
         print(json.dumps({"source_ids": ["unknown:source", records[0]["id"]]}))
+    elif os.environ.get("MODEL_SELECT_ALL"):
+        print(json.dumps({"source_ids": [record["id"] for record in records]}))
     else:
         print(json.dumps({"source_ids": [record["id"] for record in records[:2]]}))
 else:

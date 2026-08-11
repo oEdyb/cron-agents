@@ -35,6 +35,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                     "MODEL_LOG",
                     "MODEL_FAIL_WRITER",
                     "MODEL_INVALID_CURATOR",
+                    "MODEL_SELECT_ALL",
                     "MODEL_UNKNOWN_CITATION",
                 ],
             }

@@ -33,7 +33,7 @@ def test_shipped_example_config_loads() -> None:
     assert config.agents["curator"].model == "codex"
     assert config.agents["writer"].model == "codex-web"
     assert config.jobs["briefing"].settings["min_sources"] == 1
-    assert config.jobs["briefing"].settings["max_sources"] == 10
+    assert "max_sources" not in config.jobs["briefing"].settings
     assert config.jobs["briefing"].settings["candidate_limit"] == 1000
     assert config.jobs["papers"].settings == {}
     curator_prompt = (root / "prompts" / "curator.md").read_text()
