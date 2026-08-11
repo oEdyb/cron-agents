@@ -4,6 +4,7 @@ from datetime import date
 from http.client import IncompleteRead
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -477,11 +478,14 @@ def test_hn_reader_skips_source_already_in_ledger(tmp_path: Path, monkeypatch) -
     assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 0}
 
 
-def test_hugging_face_papers_collects_official_api_shape(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(
-        papers,
-        "fetch_json",
-        lambda _url: [
+def test_hugging_face_papers_collects_official_daily_api_shape(
+    tmp_path: Path, monkeypatch
+) -> None:
+    requested: list[str] = []
+
+    def fetch(url: str) -> list[dict[str, object]]:
+        requested.append(url)
+        return [
             {
                 "paper": {
                     "id": "2607.26497",
@@ -497,23 +501,208 @@ def test_hugging_face_papers_collects_official_api_shape(tmp_path: Path, monkeyp
                         {"name": "Donald"},
                     ],
                     "upvotes": 42,
+                    "submittedOnDailyAt": "2026-07-31T00:00:00.000Z",
                     "githubRepo": "https://github.com/example/paper",
                     "projectPage": "https://example.com/project",
                 }
             }
-        ],
+        ]
+
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        fetch,
     )
-    ctx = context(tmp_path, {"limit": 10, "sort": "trending"})
+    ctx = context(tmp_path, {})
     object.__setattr__(ctx, "name", "papers")
 
     result = papers.run(ctx)
     item = ctx.database.get_sources(["hugging-face-papers:2607.26497"])[0]
 
-    assert result == {"job": "papers", "fetched": 1, "inserted": 1}
+    assert result == {"job": "papers", "fetched": 1, "inserted": 1, "updated": 0}
     assert item.url == "https://arxiv.org/abs/2607.26497"
     assert item.author == "Ada, Grace, Linus, Margaret, Edsger, and 2 others"
-    assert "42 Hugging Face upvotes" in item.content
+    assert item.source_published_at == "2026-07-31T00:00:00+00:00"
+    assert item.content.startswith(
+        "42 Hugging Face upvotes.\nA concrete abstract with measured results."
+    )
     assert "https://github.com/example/paper" in item.content
+    query = parse_qs(urlsplit(requested[0]).query)
+    assert query == {"date": ["2026-07-31"], "limit": ["100"], "p": ["0"]}
+
+
+def test_hugging_face_papers_collects_every_daily_page(tmp_path: Path, monkeypatch) -> None:
+    def item(number: int) -> dict[str, object]:
+        return {
+            "paper": {
+                "id": f"2607.{number:05d}",
+                "title": f"Paper {number}",
+                "summary": f"Measured result {number} with enough detail.",
+                "authors": [],
+                "upvotes": 102 - number,
+                "submittedOnDailyAt": "2026-07-31T00:00:00.000Z",
+            }
+        }
+
+    pages = {0: [item(number) for number in range(100)], 1: [item(100), item(101)]}
+    requested_pages: list[int] = []
+
+    def fetch(url: str) -> list[dict[str, object]]:
+        page = int(parse_qs(urlsplit(url).query)["p"][0])
+        requested_pages.append(page)
+        return pages[page]
+
+    monkeypatch.setattr(papers, "fetch_json", fetch)
+    ctx = context(tmp_path, {})
+    object.__setattr__(ctx, "name", "papers")
+
+    result = papers.run(ctx)
+
+    assert result == {"job": "papers", "fetched": 102, "inserted": 102, "updated": 0}
+    assert requested_pages == [0, 1]
+    source_ids = [f"hugging-face-papers:2607.{number:05d}" for number in range(102)]
+    assert len(ctx.database.get_sources(source_ids)) == 102
+
+
+def test_hugging_face_papers_rejects_item_outside_requested_day(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        lambda _url: [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "Old paper",
+                    "summary": "This paper belongs to a different Daily Papers page.",
+                    "authors": [],
+                    "upvotes": 42,
+                    "submittedOnDailyAt": "2026-07-30T00:00:00.000Z",
+                }
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="outside requested date"):
+        papers.run(context(tmp_path, {}))
+
+
+def test_hugging_face_papers_enriches_an_existing_unpublished_arxiv_row(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(papers, "utc_now", lambda: "2026-07-31T18:00:00+00:00")
+    ctx = context(tmp_path, {})
+    object.__setattr__(ctx, "name", "papers")
+    existing = Source.create(
+        provider="rss:arxiv",
+        provider_id="2607.26497",
+        url="https://arxiv.org/abs/2607.26497",
+        title="A useful paper",
+        content="The original arXiv abstract without Hugging Face votes.",
+        fetched_at="2026-07-20T08:00:00+00:00",
+        source_published_at="2026-07-20T00:00:00+00:00",
+    )
+    ctx.database.add_sources([existing])
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        lambda _url: [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "A useful paper",
+                    "summary": "A concrete abstract with measured results.",
+                    "authors": [{"name": "Ada"}],
+                    "upvotes": 42,
+                    "submittedOnDailyAt": "2026-07-31T00:00:00.000Z",
+                }
+            }
+        ],
+    )
+
+    result = papers.run(ctx)
+    saved = ctx.database.get_sources([existing.id])[0]
+    available = ctx.database.available_sources(
+        since="2026-07-31T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+
+    assert result == {"job": "papers", "fetched": 1, "inserted": 0, "updated": 1}
+    assert saved.id == existing.id
+    assert saved.provider == "rss:arxiv"
+    assert saved.content.startswith("42 Hugging Face upvotes.")
+    assert saved.source_published_at == "2026-07-31T00:00:00+00:00"
+    assert saved.fingerprint != existing.fingerprint
+    assert [source.id for source in available] == [existing.id]
+
+
+def test_hugging_face_papers_does_not_revive_a_published_arxiv_row(
+    tmp_path: Path, monkeypatch
+) -> None:
+    ctx = context(tmp_path, {})
+    object.__setattr__(ctx, "name", "papers")
+    existing = Source.create(
+        provider="rss:arxiv",
+        provider_id="2607.26497",
+        url="https://arxiv.org/abs/2607.26497",
+        title="A useful paper",
+        content="Already used.",
+        fetched_at="2026-07-20T08:00:00+00:00",
+        source_published_at="2026-07-20T00:00:00+00:00",
+    )
+    ctx.database.add_sources([existing], published=True)
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        lambda _url: [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "A useful paper",
+                    "summary": "A concrete abstract with measured results.",
+                    "authors": [{"name": "Ada"}],
+                    "upvotes": 42,
+                    "submittedOnDailyAt": "2026-07-31T00:00:00.000Z",
+                }
+            }
+        ],
+    )
+
+    result = papers.run(ctx)
+    saved = ctx.database.get_sources([existing.id])[0]
+
+    assert result == {"job": "papers", "fetched": 1, "inserted": 0, "updated": 0}
+    assert ctx.database.status(existing.id) == "published"
+    assert saved.content == "Already used."
+    assert saved.source_published_at == "2026-07-20T00:00:00+00:00"
+
+
+@pytest.mark.parametrize("upvotes", [None, "42", True, -1])
+def test_hugging_face_papers_rejects_invalid_upvotes(
+    tmp_path: Path, monkeypatch, upvotes: object
+) -> None:
+    monkeypatch.setattr(
+        papers,
+        "fetch_json",
+        lambda _url: [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "A useful paper",
+                    "summary": "A concrete abstract with measured results.",
+                    "authors": [],
+                    "upvotes": upvotes,
+                    "submittedOnDailyAt": "2026-07-31T00:00:00.000Z",
+                }
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="invalid upvotes"):
+        papers.run(context(tmp_path, {}))
 
 
 def test_hugging_face_papers_rejects_bad_api_shape(tmp_path: Path, monkeypatch) -> None:

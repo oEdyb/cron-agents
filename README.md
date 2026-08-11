@@ -1,10 +1,10 @@
 # cron-agents
 
-I built cron-agents to turn the feeds I care about into one daily briefing.
+I built cron-agents to turn the feeds I care about into one short daily lesson.
 
 ![RSS, HN, papers, X, and YouTube flow through saved links, a curator, and a writer into one briefing; used links cannot return](assets/flow.svg)
 
-The curator chooses the sources. The writer receives only those records, researches their links, and writes the briefing. SQLite prevents repeats.
+The curator chooses the sources. The writer receives only those records, researches their links, and teaches the useful part. SQLite prevents repeats.
 
 ## Set it up with an agent
 
@@ -72,8 +72,8 @@ PATH=/home/your_name/.local/bin:/home/your_name/.kimi-code/bin:/usr/local/bin:/u
 
 0 */3 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run hn
 30 */6 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run rss
-45 6 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run papers
-0 7 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run arxiv
+30 20 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run papers
+40 20 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run arxiv
 0 21 * * * cd "$APP" && flock -n .run.lock .venv/bin/cron-agents run briefing
 ```
 

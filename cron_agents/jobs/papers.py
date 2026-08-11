@@ -1,32 +1,47 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from urllib.parse import quote, urlencode
 
 from cron_agents.db import Source, utc_now
 from cron_agents.jobs import JobContext, fetch_json
 
 API_URL = "https://huggingface.co/api/daily_papers"
+PAGE_SIZE = 100
+MAX_PAGES = 100
 
 
 def run(ctx: JobContext) -> dict[str, object]:
-    limit = ctx.job.settings.get("limit", 30)
-    if not isinstance(limit, int) or not 1 <= limit <= 100:
-        raise ValueError("papers.limit must be between 1 and 100")
-    sort = ctx.job.settings.get("sort", "trending")
-    if sort not in {"publishedAt", "trending"}:
-        raise ValueError("papers.sort must be publishedAt or trending")
-
-    items = fetch_json(f"{API_URL}?{urlencode({'limit': limit, 'sort': sort})}")
-    if not isinstance(items, list):
-        raise ValueError("Hugging Face returned an invalid paper list")
-
+    requested_date = ctx.date.isoformat()
     fetched_at = utc_now()
-    sources = [_source(item, fetched_at, index) for index, item in enumerate(items, 1)]
+    sources: list[Source] = []
+    seen: set[str] = set()
+    for page in range(MAX_PAGES):
+        url = f"{API_URL}?{urlencode({'date': requested_date, 'limit': PAGE_SIZE, 'p': page})}"
+        items = fetch_json(url)
+        if not isinstance(items, list):
+            raise ValueError("Hugging Face returned an invalid paper list")
+        for item in items:
+            source = _source(item, fetched_at, len(sources) + 1, requested_date)
+            if source.id not in seen:
+                seen.add(source.id)
+                sources.append(source)
+        if len(items) < PAGE_SIZE:
+            break
+    else:
+        raise ValueError("Hugging Face returned too many paper pages")
+
+    updated = ctx.database.refresh_fetched_sources(sources)
     inserted = ctx.database.add_sources(sources)
-    return {"job": ctx.name, "fetched": len(sources), "inserted": inserted}
+    return {
+        "job": ctx.name,
+        "fetched": len(sources),
+        "inserted": inserted,
+        "updated": updated,
+    }
 
 
-def _source(item: object, fetched_at: str, index: int) -> Source:
+def _source(item: object, fetched_at: str, index: int, requested_date: str) -> Source:
     if not isinstance(item, dict) or not isinstance(item.get("paper"), dict):
         raise ValueError(f"Hugging Face paper {index} has an invalid shape")
     paper = item["paper"]
@@ -35,6 +50,17 @@ def _source(item: object, fetched_at: str, index: int) -> Source:
     summary = paper.get("summary")
     if not all(isinstance(value, str) and value.strip() for value in (paper_id, title, summary)):
         raise ValueError(f"Hugging Face paper {index} is missing id, title, or summary")
+    submitted = paper.get("submittedOnDailyAt")
+    if not isinstance(submitted, str):
+        raise ValueError(f"Hugging Face paper {index} is missing its Daily Papers date")
+    try:
+        submitted_at = datetime.fromisoformat(submitted.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"Hugging Face paper {index} has an invalid Daily Papers date") from error
+    if submitted_at.date().isoformat() != requested_date:
+        raise ValueError(f"Hugging Face paper {index} is outside requested date")
+    if submitted_at.tzinfo is None:
+        submitted_at = submitted_at.replace(tzinfo=UTC)
 
     authors = paper.get("authors", [])
     if not isinstance(authors, list):
@@ -47,10 +73,10 @@ def _source(item: object, fetched_at: str, index: int) -> Source:
         and author["name"].strip()
     ]
 
-    details = [summary.strip()]
     upvotes = paper.get("upvotes")
-    if isinstance(upvotes, int | float) and not isinstance(upvotes, bool):
-        details.append(f"{upvotes:g} Hugging Face upvotes.")
+    if not isinstance(upvotes, int) or isinstance(upvotes, bool) or upvotes < 0:
+        raise ValueError(f"Hugging Face paper {index} has invalid upvotes")
+    details = [f"{upvotes} Hugging Face upvotes.", summary.strip()]
     for label, field in (("Code", "githubRepo"), ("Project", "projectPage")):
         value = paper.get(field)
         if isinstance(value, str) and value.startswith(("http://", "https://")):
@@ -68,4 +94,5 @@ def _source(item: object, fetched_at: str, index: int) -> Source:
         content="\n".join(details),
         author=author or None,
         fetched_at=fetched_at,
+        source_published_at=submitted_at.astimezone(UTC).isoformat(timespec="seconds"),
     )
