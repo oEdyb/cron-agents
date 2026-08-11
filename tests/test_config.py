@@ -39,6 +39,20 @@ def test_shipped_example_config_loads() -> None:
     assert "technical friend" in writer_prompt
     assert "## Try it" in writer_prompt
     assert "what to measure" in writer_prompt
+    experiment_rules = (
+        "build the smallest working version",
+        "remove or replace one component",
+        "vary one setting until the behavior changes",
+        "same task, inputs or data, conditions, and budget while changing only the method",
+        "construct the smallest failure case",
+        "Do not present this menu to the reader",
+        "write down one concrete, falsifiable result",
+        "Do not supply or reveal the prediction",
+        "which visible result or failure would teach the most",
+        "Use one shape only",
+        "generic or forced",
+    )
+    assert all(rule in writer_prompt for rule in experiment_rules)
 
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:
