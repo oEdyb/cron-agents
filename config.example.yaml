@@ -138,6 +138,5 @@ jobs:
     lookback_hours: 36
     candidate_limit: 1000
     min_sources: 1
-    max_sources: 10
     max_content_chars: 5000
     output_dir: briefings

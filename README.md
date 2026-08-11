@@ -58,7 +58,7 @@ Collect sources, then run the curator and writer:
 .venv/bin/cron-agents run briefing
 ```
 
-Open `briefings/YYYY-MM-DD.md`. The curator chooses between one and ten sources. The writer researches only those stories, gives each distinct topic its own segment, then puts each source link beside the text it supports.
+Open `briefings/YYYY-MM-DD.md`. The curator keeps every strong source, so the count changes with the day. The writer researches only those stories, gives each distinct topic its own segment, then puts each source link beside the text it supports.
 
 ## Run it every day
 
