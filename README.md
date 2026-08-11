@@ -1,6 +1,6 @@
 # cron-agents
 
-I built cron-agents to turn the feeds I care about into one short daily lesson.
+I built cron-agents to turn the feeds I care about into one useful daily briefing.
 
 ![RSS, HN, papers, X, and YouTube flow through saved links, a curator, and a writer into one briefing; used links cannot return](assets/flow.svg)
 
@@ -58,7 +58,7 @@ Collect sources, then run the curator and writer:
 .venv/bin/cron-agents run briefing
 ```
 
-Open `briefings/YYYY-MM-DD.md`. The curator chooses between one and ten sources. The writer researches only those stories, then puts each source link beside the text it supports.
+Open `briefings/YYYY-MM-DD.md`. The curator chooses between one and ten sources. The writer researches only those stories, gives each distinct topic its own segment, then puts each source link beside the text it supports.
 
 ## Run it every day
 

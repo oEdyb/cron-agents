@@ -39,8 +39,18 @@ def test_shipped_example_config_loads() -> None:
     curator_prompt = (root / "prompts" / "curator.md").read_text()
     writer_prompt = (root / "prompts" / "writer.md").read_text()
     assert "A busy feed is not an important feed." in curator_prompt
-    assert "short daily lesson" in curator_prompt
+    assert "multi-segment daily briefing" in curator_prompt
+    assert "Select every strong, relevant record" in curator_prompt
+    assert "Do not narrow the whole briefing to one theme." in curator_prompt
+    assert "Choose related records together" in curator_prompt
     assert "learn by doing" in curator_prompt
+    assert "multi-segment daily briefing" in writer_prompt
+    assert "Give each distinct topic its own segment." in writer_prompt
+    assert "Do not turn the whole briefing into one lesson." in writer_prompt
+    assert "one concrete example or walkthrough" in writer_prompt
+    context = config.jobs["briefing"].settings["context"]
+    assert "multi-segment daily" in context
+    assert "preserve useful variety" in context
     assert "few ideas that make the rest click" in writer_prompt
     assert "technical friend" in writer_prompt
     assert "## Try it" in writer_prompt
