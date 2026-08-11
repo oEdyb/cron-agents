@@ -133,8 +133,9 @@ jobs:
       Assume the reader knows common AI and software terms. Explain uncommon ideas
       with plain words and one concrete example. Focus on the few ideas that make
       each story click. Prefer ideas the reader can test and learn by doing. Learning
-      comes first; a useful project or content idea can follow. Include every strong
-      match, preserve useful variety, and skip filler.
+      comes first; a useful project or content idea can follow. After the broad
+      briefing, teach one worthwhile story more deeply when it earns the space.
+      Include every strong match, preserve useful variety, and skip filler.
     lookback_hours: 36
     candidate_limit: 1000
     min_sources: 1

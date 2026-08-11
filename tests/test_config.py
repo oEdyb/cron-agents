@@ -47,7 +47,13 @@ def test_shipped_example_config_loads() -> None:
     assert "multi-segment daily briefing" in writer_prompt
     assert "Give each distinct topic its own segment." in writer_prompt
     assert "Do not turn the whole briefing into one lesson." in writer_prompt
-    assert "one concrete example or walkthrough" in writer_prompt
+    assert "Do not turn every segment into a full lesson." in writer_prompt
+    assert "mechanism, concrete evidence, and limit" in writer_prompt
+    assert "After the story segments, add one optional deeper lesson" in writer_prompt
+    assert "simplest useful mechanism and a concrete example" in writer_prompt
+    assert "Explain why it works and the limit" in writer_prompt
+    assert "There is no fixed word or token count." in writer_prompt
+    assert writer_prompt.index("optional deeper lesson") < writer_prompt.index("## Try it")
     context = config.jobs["briefing"].settings["context"]
     assert "multi-segment daily" in context
     assert "preserve useful variety" in context
