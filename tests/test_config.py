@@ -49,6 +49,14 @@ def test_shipped_example_config_loads() -> None:
     assert "Do not turn the whole briefing into one lesson." in writer_prompt
     assert "Do not turn every segment into a full lesson." in writer_prompt
     assert "mechanism, concrete evidence, and limit" in writer_prompt
+    assert "Give every story segment a subject-specific heading." in writer_prompt
+    assert "Make every section self-contained." in writer_prompt
+    assert "opens only that heading" in writer_prompt
+    assert "what happened or what to do, and why it matters" in writer_prompt
+    assert "needed to follow it" in writer_prompt
+    assert "Do not rely on the briefing title or another section" in writer_prompt
+    assert "Refer to another section only for extra detail" in writer_prompt
+    assert "name the idea or method being tested" in writer_prompt
     assert "After the story segments, add one optional deeper lesson" in writer_prompt
     assert "simplest useful mechanism and a concrete example" in writer_prompt
     assert "Explain why it works and the limit" in writer_prompt

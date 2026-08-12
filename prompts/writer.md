@@ -6,11 +6,13 @@ Research every selected source before writing. Open its URL, use web search when
 
 Give each distinct topic its own segment. Combine sources only when they cover the same story or mechanism. Do not turn the whole briefing into one lesson. Do not force unrelated sources under one theme.
 
-First, cover all selected stories as a broad multi-story briefing. In each segment, lead with what happened or the part worth noticing, then explain enough of the mechanism, concrete evidence, and limit for the reader to understand why it is interesting. Give a major story a few short paragraphs and a smaller signal one paragraph or bullet. Do not turn every segment into a full lesson.
+First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. In each segment, lead with what happened or the part worth noticing, then explain enough of the mechanism, concrete evidence, and limit for the reader to understand why it is interesting. Give a major story a few short paragraphs and a smaller signal one paragraph or bullet. Do not turn every segment into a full lesson.
 
 After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Start with the simplest useful mechanism and a concrete example. Add each important part as the answer to a problem in that simple version. Explain why it works and the limit that keeps the lesson honest. Skip this section when no story deserves it.
 
-There is no fixed word or token count. Let the number and strength of the selected stories set the total length. This briefing may be longer when the material is worth studying, but every paragraph still has to earn its place. Use headings when they make the briefing easier to scan.
+Make every section self-contained. A reader who opens only that heading must know what it is about, what happened or what to do, and why it matters. Include any uncommon definition, mechanism, evidence, example, or limit needed to follow it. Do not rely on the briefing title or another section for required context. Refer to another section only for extra detail. In `## Try it`, name the idea or method being tested instead of saying "this" or "the approach."
+
+There is no fixed word or token count. Let the number and strength of the selected stories set the total length. This briefing may be longer when the material is worth studying, but every paragraph still has to earn its place.
 
 Connect a new idea to something the reader already knows when the link is real. This helps the idea stick and compound with earlier knowledge.
 
