@@ -13,12 +13,15 @@ def test_shipped_example_config_loads() -> None:
 
     config = load_config(root / "config.example.yaml")
 
-    for name in ("codex", "codex-web"):
+    for name in ("codex", "codex-web", "codex-edit"):
         command = config.models[name].command
         assert command[command.index("--model") + 1] == "gpt-5.6-sol"
         reasoning = 'model_reasoning_effort="xhigh"'
         assert command.count(reasoning) == 1
         assert command[command.index(reasoning) - 1] == "-c"
+        assert command.count("--disable") == 2
+        assert "apps" in command
+        assert "image_generation" in command
     assert config.models["codex"].command[-1] == "-"
     assert "--strict-config" in config.models["codex"].command
     assert 'web_search="disabled"' in config.models["codex"].command
@@ -26,12 +29,17 @@ def test_shipped_example_config_loads() -> None:
     assert "--strict-config" in config.models["codex-web"].command
     assert 'web_search="live"' in config.models["codex-web"].command
     assert "features.shell_tool=false" in config.models["codex-web"].command
+    assert "workspace-write" in config.models["codex-edit"].command
+    assert "features.shell_tool=false" not in config.models["codex-edit"].command
     assert config.models["kimi"].command[0] == "kimi"
     assert config.models["kimi"].command[-1] == "{prompt}"
     assert config.models["kimi"].output == "jsonl"
     assert config.models["kimi-web"].command[0] == "kimi"
+    assert "--auto" in config.models["kimi-edit"].command
     assert config.agents["curator"].model == "codex"
     assert config.agents["writer"].model == "codex-web"
+    assert config.agents["editor"].model == "codex-edit"
+    assert config.agents["editor"].prompt == config.agents["writer"].prompt
     assert config.jobs["briefing"].settings["min_sources"] == 1
     assert "max_sources" not in config.jobs["briefing"].settings
     assert config.jobs["briefing"].settings["candidate_limit"] == 1000
@@ -51,6 +59,7 @@ def test_shipped_example_config_loads() -> None:
     assert "mechanism, concrete evidence, and limit" in writer_prompt
     assert "Give every story segment a subject-specific heading." in writer_prompt
     assert "Make every section self-contained." in writer_prompt
+    assert "start with a concrete action or example" in writer_prompt
     assert "opens only that heading" in writer_prompt
     assert "what happened or what to do, and why it matters" in writer_prompt
     assert "needed to follow it" in writer_prompt
@@ -67,6 +76,7 @@ def test_shipped_example_config_loads() -> None:
     assert "preserve useful variety" in context
     assert "few ideas that make the rest click" in writer_prompt
     assert "technical friend" in writer_prompt
+    assert '"learn the rule" instead of "infer the transformation"' in writer_prompt
     assert "## Try it" in writer_prompt
     assert "what to measure" in writer_prompt
     experiment_rules = (

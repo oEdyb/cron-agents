@@ -112,6 +112,8 @@ def test_writer_receives_only_selected_sources(project) -> None:
     output = (project.root / "briefings" / "2026-07-31.md").read_text()
     events = read_log(project.log)
     writer_prompt = events[1]["prompt"]
+    editor_event = events[2]
+    editor_prompt = editor_event["prompt"]
     rejected = ({f"test:item-{number}" for number in range(1, 4)} - set(selected)).pop()
     assert result["recovered"] is False
     assert len(selected) == 2
@@ -128,8 +130,44 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert "Briefing date: 2026-07-31" in writer_prompt
     assert "Use web search and direct page fetching" in writer_prompt
     assert all(source_id in writer_prompt for source_id in selected)
+    assert {record["id"] for record in editor_event["sources"]} == set(selected)
     assert rejected not in writer_prompt
-    assert [event["kind"] for event in events] == ["curator", "writer"]
+    assert rejected not in json.dumps(editor_event["sources"])
+    assert "The briefing is finished only when:" in editor_prompt
+    assert "not an information limit" in editor_prompt
+    assert "the draft missed" in editor_prompt
+    assert "Open draft.md and sources.json" in editor_prompt
+    assert "DRAFT_BRIEFING=" not in editor_prompt
+    assert "Clear because" in output
+    assert [event["kind"] for event in events] == ["curator", "writer", "editor"]
+
+
+def test_editor_receives_full_selected_content(project) -> None:
+    sources = add_sources(project, 1, 3)
+    long_content = "start " + ("middle " * 300) + "full-record-ending"
+    config = load_config(project.config)
+    database = Database(config.state_dir / "state.db")
+    database.initialize()
+    database.refresh_fetched_sources(
+        [Source.create(
+            provider=sources[0].provider,
+            provider_id=sources[0].provider_id,
+            url=sources[0].url,
+            title=sources[0].title,
+            content=long_content,
+            fetched_at=sources[0].fetched_at,
+        )]
+    )
+    project.data["jobs"]["briefing"]["max_content_chars"] = 100
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    writer_prompt = read_log(project.log)[1]["prompt"]
+    editor_event = read_log(project.log)[2]
+    assert "full-record-ending" not in writer_prompt
+    assert "full-record-ending" not in editor_event["prompt"]
+    assert "full-record-ending" in json.dumps(editor_event["sources"])
 
 
 def test_default_selection_has_no_fixed_maximum(project) -> None:
@@ -235,7 +273,96 @@ def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
 
     assert selection(project, "2026-07-31") == first_selection
     assert result["recovered"] is False
-    assert [event["kind"] for event in read_log(project.log)] == ["curator", "writer", "writer"]
+    assert [event["kind"] for event in read_log(project.log)] == [
+        "curator",
+        "writer",
+        "writer",
+        "editor",
+    ]
+
+
+def test_editor_failure_keeps_selection_for_retry(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_FAIL_EDITOR", "1")
+
+    with pytest.raises(ModelError, match="exited 10"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    first_selection = selection(project, "2026-07-31")
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
+
+    monkeypatch.delenv("MODEL_FAIL_EDITOR")
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert selection(project, "2026-07-31") == first_selection
+    assert result["recovered"] is False
+    assert [event["kind"] for event in read_log(project.log)] == [
+        "curator",
+        "writer",
+        "editor",
+        "writer",
+        "editor",
+    ]
+    assert not list((project.root / "data").glob("briefing-*-*"))
+
+
+def test_editor_cannot_publish_an_unknown_citation(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_EDITOR_UNKNOWN_CITATION", "1")
+
+    with pytest.raises(ValueError, match="unselected source IDs"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert selection(project, "2026-07-31")["source_ids"]
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
+    assert not list((project.root / "data").glob("briefing-*-*"))
+
+
+def test_editor_cannot_drop_a_selected_citation(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_EDITOR_DROP_CITATION", "1")
+
+    with pytest.raises(ValueError, match="omitted source IDs"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
+
+
+def test_editor_must_confirm_completion(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_EDITOR_NO_COMPLETE", "1")
+
+    with pytest.raises(ValueError, match="did not confirm completion"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
+
+
+def test_config_without_editor_keeps_two_agent_flow(project) -> None:
+    add_sources(project, 1, 3)
+    project.data["jobs"]["briefing"].pop("editor")
+    project.data["agents"].pop("editor")
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    output = (project.root / "briefings" / "2026-07-31.md").read_text()
+    assert result["recovered"] is False
+    assert [event["kind"] for event in read_log(project.log)] == ["curator", "writer"]
+    assert "Useful because" in output
+
+
+def test_editor_must_use_the_writer_prompt(project) -> None:
+    add_sources(project, 1, 3)
+    other_prompt = project.root / "prompts" / "other.md"
+    other_prompt.write_text("Different instructions.")
+    project.data["agents"]["editor"]["prompt"] = "prompts/other.md"
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+
+    with pytest.raises(ValueError, match="must use the same prompt"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
 
 
 def test_saved_selection_reserves_sources_for_later_dates(project, monkeypatch) -> None:

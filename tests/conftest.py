@@ -34,6 +34,10 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                     "HOME",
                     "MODEL_LOG",
                     "MODEL_FAIL_WRITER",
+                    "MODEL_FAIL_EDITOR",
+                    "MODEL_EDITOR_UNKNOWN_CITATION",
+                    "MODEL_EDITOR_DROP_CITATION",
+                    "MODEL_EDITOR_NO_COMPLETE",
                     "MODEL_INVALID_CURATOR",
                     "MODEL_SELECT_ALL",
                     "MODEL_UNKNOWN_CITATION",
@@ -43,6 +47,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         "agents": {
             "curator": {"model": "fixture", "prompt": "prompts/curator.md"},
             "writer": {"model": "fixture", "prompt": "prompts/writer.md"},
+            "editor": {"model": "fixture", "prompt": "prompts/writer.md"},
         },
         "jobs": {
             "rss": {
@@ -54,6 +59,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                 "module": "cron_agents.jobs.briefing",
                 "curator": "curator",
                 "writer": "writer",
+                "editor": "editor",
                 "context": "Fixture briefing.",
                 "lookback_hours": 36,
                 "min_sources": 2,

@@ -6,11 +6,20 @@ import sys
 from pathlib import Path
 
 prompt = sys.stdin.read()
-kind = "curator" if "CANDIDATE_SOURCES=" in prompt else "writer"
+if "CANDIDATE_SOURCES=" in prompt:
+    kind = "curator"
+elif "Edit draft.md in place" in prompt:
+    kind = "editor"
+else:
+    kind = "writer"
 
+event: dict[str, object] = {"kind": kind, "prompt": prompt}
+if kind == "editor":
+    event["draft"] = Path("draft.md").read_text()
+    event["sources"] = json.loads(Path("sources.json").read_text())
 if log_path := os.environ.get("MODEL_LOG"):
     with Path(log_path).open("a", encoding="utf-8") as log:
-        log.write(json.dumps({"kind": kind, "prompt": prompt}) + "\n")
+        log.write(json.dumps(event) + "\n")
 
 if kind == "curator":
     records = json.loads(prompt.split("CANDIDATE_SOURCES=", 1)[1])
@@ -20,7 +29,7 @@ if kind == "curator":
         print(json.dumps({"source_ids": [record["id"] for record in records]}))
     else:
         print(json.dumps({"source_ids": [record["id"] for record in records[:2]]}))
-else:
+elif kind == "writer":
     if os.environ.get("MODEL_FAIL_WRITER"):
         print("fixture writer failed", file=sys.stderr)
         raise SystemExit(9)
@@ -34,3 +43,18 @@ else:
             lines.append(f"Useful because it is concrete. [source:{record['id']}]")
             lines.append("")
         print("\n".join(lines))
+else:
+    if os.environ.get("MODEL_FAIL_EDITOR"):
+        print("fixture editor failed", file=sys.stderr)
+        raise SystemExit(10)
+    if os.environ.get("MODEL_EDITOR_NO_COMPLETE"):
+        print("I could not edit the draft")
+        raise SystemExit
+    draft = Path("draft.md").read_text()
+    if os.environ.get("MODEL_EDITOR_UNKNOWN_CITATION"):
+        draft += "\nUnknown source [source:unknown:source]\n"
+    if os.environ.get("MODEL_EDITOR_DROP_CITATION"):
+        source_id = json.loads(Path("sources.json").read_text())[0]["id"]
+        draft = draft.replace(f"[source:{source_id}]", "", 1)
+    Path("draft.md").write_text(draft.replace("Useful because", "Clear because"))
+    print("EDIT_COMPLETE")
