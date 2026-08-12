@@ -134,6 +134,14 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert rejected not in writer_prompt
     assert rejected not in json.dumps(editor_event["sources"])
     assert "The briefing is finished only when:" in editor_prompt
+    assert "lowest missing foundation" in editor_prompt
+    assert "include only the steps needed to understand it" in editor_prompt
+    assert "one or two sentences per label" in editor_prompt
+    assert "do not force every causal step or alternative into every story" in editor_prompt
+    assert (
+        "an alternative only when it changes the reader's understanding or choice" in editor_prompt
+    )
+    assert "technical names after the things they name make sense" in editor_prompt
     assert "not an information limit" in editor_prompt
     assert "the draft missed" in editor_prompt
     assert "Open draft.md and sources.json" in editor_prompt
