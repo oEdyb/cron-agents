@@ -10,6 +10,10 @@ models:
       - --ignore-user-config
       - --ignore-rules
       - --strict-config
+      - --disable
+      - apps
+      - --disable
+      - image_generation
       - --model
       - gpt-5.6-sol
       - -c
@@ -35,6 +39,10 @@ models:
       - --ignore-user-config
       - --ignore-rules
       - --strict-config
+      - --disable
+      - apps
+      - --disable
+      - image_generation
       - --model
       - gpt-5.6-sol
       - -c
@@ -43,6 +51,33 @@ models:
       - read-only
       - -c
       - features.shell_tool=false
+      - -c
+      - agents.enabled=false
+      - -c
+      - 'web_search="live"'
+      - '-'
+    timeout: 600
+    env: [PATH, HOME, CODEX_HOME]
+
+  codex-edit:
+    command:
+      - codex
+      - exec
+      - --ephemeral
+      - --skip-git-repo-check
+      - --ignore-user-config
+      - --ignore-rules
+      - --strict-config
+      - --disable
+      - apps
+      - --disable
+      - image_generation
+      - --model
+      - gpt-5.6-sol
+      - -c
+      - 'model_reasoning_effort="xhigh"'
+      - --sandbox
+      - workspace-write
       - -c
       - agents.enabled=false
       - -c
@@ -77,6 +112,18 @@ models:
     env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
     output: jsonl
 
+  kimi-edit:
+    command:
+      - kimi
+      - --auto
+      - --output-format
+      - stream-json
+      - -p
+      - '{prompt}'
+    timeout: 600
+    env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
+    output: jsonl
+
 agents:
   curator:
     model: codex
@@ -84,7 +131,9 @@ agents:
   writer:
     model: codex-web
     prompt: prompts/writer.md
-
+  editor:
+    model: codex-edit
+    prompt: prompts/writer.md
 jobs:
   rss:
     module: cron_agents.jobs.rss
@@ -122,6 +171,7 @@ jobs:
     module: cron_agents.jobs.briefing
     curator: curator
     writer: writer
+    editor: editor
     context: |
       Audience: a developer who builds with AI.
       Goal: turn today's strongest relevant stories into a multi-segment daily

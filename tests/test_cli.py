@@ -28,15 +28,20 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
     assert briefing_result["sources"] == 2
     output = (project.root / "briefings" / "2026-07-31.md").read_text()
 
-    curator, writer = read_log(project.log)
+    curator, writer, editor = read_log(project.log)
     candidates = json.loads(curator["prompt"].split("CANDIDATE_SOURCES=", 1)[1])
     selected = json.loads(
         (project.root / "data" / "selections" / "2026-07-31.json").read_text()
     )["source_ids"]
     chosen = json.loads(writer["prompt"].split("SELECTED_SOURCES=", 1)[1])
+    edited = editor["draft"]
     candidates_by_id = {record["id"]: record for record in candidates}
 
-    assert [curator["kind"], writer["kind"]] == ["curator", "writer"]
+    assert [curator["kind"], writer["kind"], editor["kind"]] == [
+        "curator",
+        "writer",
+        "editor",
+    ]
     assert {record["title"] for record in candidates} == {
         "First useful release",
         "Second useful release",
@@ -47,6 +52,9 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
     assert "Briefing context: Fixture briefing." in curator["prompt"]
     assert "Briefing context: Fixture briefing." in writer["prompt"]
     assert chosen == [candidates_by_id[source_id] for source_id in selected]
+    assert {record["id"] for record in editor["sources"]} == set(selected)
+    assert all(source_id not in editor["prompt"] for source_id in selected)
+    assert edited.startswith("# Daily Briefing")
     assert "Rejected candidate" not in {record["title"] for record in chosen}
     assert all(f'  - "{source_id}"' in output for source_id in selected)
     assert output.count("[Source](") == len(selected)
