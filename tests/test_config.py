@@ -29,6 +29,9 @@ def test_shipped_example_config_loads() -> None:
     assert "--strict-config" in config.models["codex-web"].command
     assert 'web_search="live"' in config.models["codex-web"].command
     assert "features.shell_tool=false" in config.models["codex-web"].command
+    assert config.models["codex"].timeout == 600
+    assert config.models["codex-web"].timeout == 1800
+    assert config.models["codex-edit"].timeout == 1800
     assert "workspace-write" in config.models["codex-edit"].command
     assert "features.shell_tool=false" not in config.models["codex-edit"].command
     assert config.models["kimi"].command[0] == "kimi"
