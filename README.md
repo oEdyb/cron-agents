@@ -79,6 +79,15 @@ PATH=/home/your_name/.local/bin:/home/your_name/.kimi-code/bin:/usr/local/bin:/u
 
 Cron uses the machine's timezone. Use the same Linux account for the schedule and the model login. On a headless server, run `codex login --device-auth`.
 
+### Ubuntu 24.04
+
+If the editor fails with `bwrap: loopback: Operation not permitted`, Ubuntu blocked Codex's file sandbox. Keep the server-wide protection on.
+
+- Plain cron: give the native Codex binary a narrow AppArmor `userns,` rule.
+- Hardened systemd: let the service limit writes and set only the editor to `danger-full-access`.
+
+Test through the same cron or service before scheduling it. [Ubuntu documents the restriction here](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces).
+
 ## Change the workflow
 
 Use these files and fields:
