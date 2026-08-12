@@ -56,11 +56,19 @@ def test_shipped_example_config_loads() -> None:
     assert "Give each distinct topic its own segment." in writer_prompt
     assert "Do not turn the whole briefing into one lesson." in writer_prompt
     assert "Do not turn every segment into a full lesson." in writer_prompt
-    assert "mechanism, concrete evidence, and limit" in writer_prompt
+    assert "Include enough concrete evidence and limits to judge the claim" in writer_prompt
+    assert "For an unfamiliar mechanism" in writer_prompt
+    assert "start at the lowest missing foundation" in writer_prompt
+    assert "only as far as this story needs" in writer_prompt
+    assert "what breaks or question appears" in writer_prompt
+    assert "Give a technical idea its name after the thing it names makes sense" in writer_prompt
+    assert "constraint or tradeoff that changes the choice" in writer_prompt
+    assert "Reuse the same case across the segment" in writer_prompt
     assert "Give every story segment a subject-specific heading." in writer_prompt
     assert "**What happened:**" in writer_prompt
     assert "**Why it matters:**" in writer_prompt
     assert "**Example:**" in writer_prompt
+    assert "one or two sentences under each label" in writer_prompt
     assert "Explain why something exists before describing its design." in writer_prompt
     assert "If a sentence makes sense only after rereading, rewrite it." in writer_prompt
     assert "Make every section self-contained." in writer_prompt
@@ -73,7 +81,11 @@ def test_shipped_example_config_loads() -> None:
     assert "name the idea or method being tested" in writer_prompt
     assert "After the story segments, add one optional deeper lesson" in writer_prompt
     assert "simplest useful mechanism and a concrete example" in writer_prompt
-    assert "Explain why it works and the limit" in writer_prompt
+    assert "Build one cumulative causal staircase" in writer_prompt
+    assert "Show what would happen without it" in writer_prompt
+    assert "real alternative when one matters" in writer_prompt
+    assert "which constraint makes the chosen tradeoff useful" in writer_prompt
+    assert "Keep the source's stated reason separate from your inference" in writer_prompt
     assert "There is no fixed word or token count." in writer_prompt
     assert writer_prompt.index("optional deeper lesson") < writer_prompt.index("## Try it")
     context = config.jobs["briefing"].settings["context"]
@@ -81,6 +93,8 @@ def test_shipped_example_config_loads() -> None:
     assert "preserve useful variety" in context
     assert "few ideas that make the rest click" in writer_prompt
     assert "technical friend" in writer_prompt
+    assert "what the authors built or tested" in writer_prompt
+    assert "what remains unproven" in writer_prompt
     assert '"learn the rule" instead of "infer the transformation"' in writer_prompt
     assert "## Try it" in writer_prompt
     assert "what to measure" in writer_prompt

@@ -8,15 +8,15 @@ Give each distinct topic its own segment. Combine sources only when they cover t
 
 First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. Follow it with these three visible labels:
 
-**What happened:** Explain the news or result in normal words. Start with the basic problem or reason the thing exists, then explain what changed. Include enough of the mechanism, concrete evidence, and limit to understand the claim.
+**What happened:** Open with the news or result in normal words. For an unfamiliar mechanism, start at the lowest missing foundation and climb only as far as this story needs: what exists, what it does in a concrete case, what breaks or question appears, what changed, and what the change costs or leaves unresolved. Give a technical idea its name after the thing it names makes sense. Include enough concrete evidence and limits to judge the claim.
 
-**Why it matters:** State the useful consequence. Make clear what this lets someone do, changes, proves, or warns about.
+**Why it matters:** State the useful consequence. Make clear what this lets someone do, changes, proves, or warns about. When another method could solve the same problem, name the constraint or tradeoff that changes the choice.
 
-**Example:** Walk through one concrete case the reader can picture. Show the starting point, what happens, and the result. Use numbers when they make the idea easier to see.
+**Example:** Run one concrete case through the mechanism from its starting input or action to the result. Reuse the same case across the segment when that makes the steps easier to follow. Use numbers when they make the idea easier to see.
 
 Keep the labels even when a story is short. A small story may need only one or two sentences under each label. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
 
-After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Start with the simplest useful mechanism and a concrete example. Add each important part as the answer to a problem in that simple version. Explain why it works and the limit that keeps the lesson honest. Skip this section when no story deserves it.
+After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Build one cumulative causal staircase from the simplest useful mechanism and a concrete example. Add each important part only after the previous version reveals the problem it solves. Show what would happen without it, the real alternative when one matters, which constraint makes the chosen tradeoff useful, and the limit that keeps the lesson honest. Keep the source's stated reason separate from your inference. Skip this section when no story deserves it.
 
 Make every section self-contained. A reader who opens only that heading must know what it is about, what happened or what to do, and why it matters. Include any uncommon definition, mechanism, evidence, example, or limit needed to follow it. Explain why something exists before describing its design. Start new mechanisms with concrete actions the reader can picture, then name the abstract idea. Do not compress several steps into a sentence full of abstract nouns. Split the steps and show what each one does. If a sentence makes sense only after rereading, rewrite it. Do not rely on the briefing title or another section for required context. Refer to another section only for extra detail. In `## Try it`, name the idea or method being tested instead of saying "this" or "the approach."
 
@@ -34,7 +34,7 @@ Use the voice requested in the briefing context. When the context asks for the r
 
 Choose the order, headings, grouping, and depth that make the briefing easy to understand. Use a comparison or analogy when it saves explanation. A compact heading, paragraph, bullet, or named section is fine. Vary the shape and length when the material calls for it.
 
-Keep reported facts separate from your analysis. Use only the details needed to understand the point. Skip filler, repeated facts, generic advice, and lists of features that do not change the conclusion.
+Keep reported facts separate from your analysis. For research, distinguish what the authors built or tested, what the results show, what the authors conclude, and what remains unproven. Use only the details needed to understand the point. Skip filler, repeated facts, generic advice, and lists of features that do not change the conclusion.
 
 Cite each selected record as [source:ID] directly after the text it supports, and use every selected record. You may cite related records together. The application turns each citation into a clickable Source link. Do not mention rejected candidates or write a source list.
 
