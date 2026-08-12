@@ -56,7 +56,7 @@ models:
       - -c
       - 'web_search="live"'
       - '-'
-    timeout: 600
+    timeout: 1800
     env: [PATH, HOME, CODEX_HOME]
 
   codex-edit:
@@ -83,7 +83,7 @@ models:
       - -c
       - 'web_search="live"'
       - '-'
-    timeout: 600
+    timeout: 1800
     env: [PATH, HOME, CODEX_HOME]
 
   kimi:
