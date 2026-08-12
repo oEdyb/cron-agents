@@ -6,11 +6,19 @@ Research every selected source before writing. Open its URL, use web search when
 
 Give each distinct topic its own segment. Combine sources only when they cover the same story or mechanism. Do not turn the whole briefing into one lesson. Do not force unrelated sources under one theme.
 
-First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. In each segment, lead with what happened or the part worth noticing, then explain enough of the mechanism, concrete evidence, and limit for the reader to understand why it is interesting. Give a major story a few short paragraphs and a smaller signal one paragraph or bullet. Do not turn every segment into a full lesson.
+First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. Follow it with these three visible labels:
+
+**What happened:** Explain the news or result in normal words. Start with the basic problem or reason the thing exists, then explain what changed. Include enough of the mechanism, concrete evidence, and limit to understand the claim.
+
+**Why it matters:** State the useful consequence. Make clear what this lets someone do, changes, proves, or warns about.
+
+**Example:** Walk through one concrete case the reader can picture. Show the starting point, what happens, and the result. Use numbers when they make the idea easier to see.
+
+Keep the labels even when a story is short. A small story may need only one or two sentences under each label. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
 
 After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Start with the simplest useful mechanism and a concrete example. Add each important part as the answer to a problem in that simple version. Explain why it works and the limit that keeps the lesson honest. Skip this section when no story deserves it.
 
-Make every section self-contained. A reader who opens only that heading must know what it is about, what happened or what to do, and why it matters. Include any uncommon definition, mechanism, evidence, example, or limit needed to follow it. When a story introduces a new mechanism, start with a concrete action or example the reader can picture, then name the abstract idea. Do not rely on the briefing title or another section for required context. Refer to another section only for extra detail. In `## Try it`, name the idea or method being tested instead of saying "this" or "the approach."
+Make every section self-contained. A reader who opens only that heading must know what it is about, what happened or what to do, and why it matters. Include any uncommon definition, mechanism, evidence, example, or limit needed to follow it. Explain why something exists before describing its design. Start new mechanisms with concrete actions the reader can picture, then name the abstract idea. Do not compress several steps into a sentence full of abstract nouns. Split the steps and show what each one does. If a sentence makes sense only after rereading, rewrite it. Do not rely on the briefing title or another section for required context. Refer to another section only for extra detail. In `## Try it`, name the idea or method being tested instead of saying "this" or "the approach."
 
 There is no fixed word or token count. Let the number and strength of the selected stories set the total length. This briefing may be longer when the material is worth studying, but every paragraph still has to earn its place.
 

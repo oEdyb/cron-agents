@@ -58,8 +58,13 @@ def test_shipped_example_config_loads() -> None:
     assert "Do not turn every segment into a full lesson." in writer_prompt
     assert "mechanism, concrete evidence, and limit" in writer_prompt
     assert "Give every story segment a subject-specific heading." in writer_prompt
+    assert "**What happened:**" in writer_prompt
+    assert "**Why it matters:**" in writer_prompt
+    assert "**Example:**" in writer_prompt
+    assert "Explain why something exists before describing its design." in writer_prompt
+    assert "If a sentence makes sense only after rereading, rewrite it." in writer_prompt
     assert "Make every section self-contained." in writer_prompt
-    assert "start with a concrete action or example" in writer_prompt
+    assert "Start new mechanisms with concrete actions" in writer_prompt
     assert "opens only that heading" in writer_prompt
     assert "what happened or what to do, and why it matters" in writer_prompt
     assert "needed to follow it" in writer_prompt
