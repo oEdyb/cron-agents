@@ -68,10 +68,12 @@ def test_shipped_example_config_loads() -> None:
     assert "constraint or tradeoff that changes the choice" in writer_prompt
     assert "Reuse the same case across the segment" in writer_prompt
     assert "Give every story segment a subject-specific heading." in writer_prompt
-    assert "**What happened:**" in writer_prompt
-    assert "**Why it matters:**" in writer_prompt
-    assert "**Example:**" in writer_prompt
-    assert "one or two sentences under each label" in writer_prompt
+    assert "Every story must make two things clear" in writer_prompt
+    assert "what happened and why it matters" in writer_prompt
+    assert "Add a concrete example when it makes" in writer_prompt
+    assert "Use visible labels only when they make the story easier to scan" in writer_prompt
+    assert "Do not force the same template onto every story" in writer_prompt
+    assert "Follow it with these three visible labels" not in writer_prompt
     assert "Explain why something exists before describing its design." in writer_prompt
     assert "If a sentence makes sense only after rereading, rewrite it." in writer_prompt
     assert "Make every section self-contained." in writer_prompt
@@ -94,6 +96,8 @@ def test_shipped_example_config_loads() -> None:
     context = config.jobs["briefing"].settings["context"]
     assert "multi-segment daily" in context
     assert "preserve useful variety" in context
+    assert "Add a concrete example when it improves understanding" in context
+    assert "with plain words and one concrete example" not in context
     assert "few ideas that make the rest click" in writer_prompt
     assert "technical friend" in writer_prompt
     assert "what the authors built or tested" in writer_prompt

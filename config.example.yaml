@@ -181,8 +181,9 @@ jobs:
       context; they do not create interest on their own. Skip routine releases,
       generic business news, and incidents without a direct practical consequence.
       Assume the reader knows common AI and software terms. Explain uncommon ideas
-      with plain words and one concrete example. Focus on the few ideas that make
-      each story click. Prefer ideas the reader can test and learn by doing. Learning
+      with plain words. Add a concrete example when it improves understanding. Focus
+      on the few ideas that make each story click. Prefer ideas the reader can test
+      and learn by doing. Learning
       comes first; a useful project or content idea can follow. After the broad
       briefing, teach one worthwhile story more deeply when it earns the space.
       Include every strong match, preserve useful variety, and skip filler.

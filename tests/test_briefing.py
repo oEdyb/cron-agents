@@ -136,7 +136,11 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert "The briefing is finished only when:" in editor_prompt
     assert "lowest missing foundation" in editor_prompt
     assert "include only the steps needed to understand it" in editor_prompt
-    assert "one or two sentences per label" in editor_prompt
+    assert "what happened and why it matters" in editor_prompt
+    assert "a concrete example when it makes the idea easier" in editor_prompt
+    assert "does not force an example, visible labels, or the same layout" in editor_prompt
+    assert "every story has visible **What happened:**" not in editor_prompt
+    assert "one or two sentences per label" not in editor_prompt
     assert "do not force every causal step or alternative into every story" in editor_prompt
     assert (
         "an alternative only when it changes the reader's understanding or choice" in editor_prompt

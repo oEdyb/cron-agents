@@ -6,15 +6,13 @@ Research every selected source before writing. Open its URL, use web search when
 
 Give each distinct topic its own segment. Combine sources only when they cover the same story or mechanism. Do not turn the whole briefing into one lesson. Do not force unrelated sources under one theme.
 
-First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. Follow it with these three visible labels:
+First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. Every story must make two things clear: what happened and why it matters. Open with the news or result in normal words, then make clear what it lets someone do, changes, proves, or warns about.
 
-**What happened:** Open with the news or result in normal words. For an unfamiliar mechanism, start at the lowest missing foundation and climb only as far as this story needs: what exists, what it does in a concrete case, what breaks or question appears, what changed, and what the change costs or leaves unresolved. Give a technical idea its name after the thing it names makes sense. Include enough concrete evidence and limits to judge the claim.
+For an unfamiliar mechanism, start at the lowest missing foundation and climb only as far as this story needs: what exists, what it does in a concrete case, what breaks or question appears, what changed, and what the change costs or leaves unresolved. Give a technical idea its name after the thing it names makes sense. Include enough concrete evidence and limits to judge the claim. When another method could solve the same problem, name the constraint or tradeoff that changes the choice.
 
-**Why it matters:** State the useful consequence. Make clear what this lets someone do, changes, proves, or warns about. When another method could solve the same problem, name the constraint or tradeoff that changes the choice.
+Add a concrete example when it makes the mechanism, consequence, or limit easier to understand. Run the case from its starting input or action to the result. Reuse the same case across the segment when that makes the steps easier to follow. Use numbers when they make the idea easier to see. Do not force an example when the story is already concrete.
 
-**Example:** Run one concrete case through the mechanism from its starting input or action to the result. Reuse the same case across the segment when that makes the steps easier to follow. Use numbers when they make the idea easier to see.
-
-Keep the labels even when a story is short. A small story may need only one or two sentences under each label. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
+Choose the clearest shape for each story. A compact paragraph, a few short paragraphs, bullets, a small comparison, or visible labels can all work. Use visible labels only when they make the story easier to scan. Do not force the same template onto every story. A small story may need only a few sentences. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
 
 After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Build one cumulative causal staircase from the simplest useful mechanism and a concrete example. Add each important part only after the previous version reveals the problem it solves. Show what would happen without it, the real alternative when one matters, which constraint makes the chosen tradeoff useful, and the limit that keeps the lesson honest. Keep the source's stated reason separate from your inference. Skip this section when no story deserves it.
 
