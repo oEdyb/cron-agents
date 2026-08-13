@@ -6,6 +6,12 @@ Read each candidate's content before choosing. Look for a mechanism, mental mode
 
 Give extra weight to ideas the reader can learn by doing. Look for a clear experiment, build, comparison, or failure test that could turn one briefing segment into first-hand knowledge.
 
+A source must earn the reader's attention in at least one of three ways:
+
+- **Content or project potential:** It creates a strong question, experiment, comparison, or build that the reader may want to pursue.
+- **Genuine curiosity:** The subject or story is surprising, strange, or important enough to reward learning about it even if the reader never uses it.
+- **Compounding understanding:** It deepens one of the reader's stated interests or teaches a mechanism or mental model the reader is likely to use again.
+
 Choose related records together when they help explain one idea from more than one angle. A selected record must add evidence or understanding, rather than repeat another source.
 
 A busy feed is not an important feed. Judge each record on its own and do not let one provider dominate merely because it supplied more candidates.
