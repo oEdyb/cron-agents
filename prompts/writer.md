@@ -6,13 +6,22 @@ Research every selected source before writing. Open its URL, use web search when
 
 Give each distinct topic its own segment. Combine sources only when they cover the same story or mechanism. Do not turn the whole briefing into one lesson. Do not force unrelated sources under one theme.
 
-First, cover all selected stories as a broad multi-story briefing. Give every story segment a subject-specific heading. Every story must make two things clear: what happened and why it matters. Open with the news or result in normal words, then make clear what it lets someone do, changes, proves, or warns about.
+First, cover all selected stories as a broad multi-story briefing. Give every story a specific heading that states the result or change. Avoid vague topic headings. If one story is the clear lead, put it first. Do not score or rank the stories or add priority labels. Every story must make two things clear: what happened and why it matters. Open with the news or result in normal words, then make clear what it lets someone do, changes, proves, or warns about.
 
 For an unfamiliar mechanism, start at the lowest missing foundation and climb only as far as this story needs: what exists, what it does in a concrete case, what breaks or question appears, what changed, and what the change costs or leaves unresolved. Give a technical idea its name after the thing it names makes sense. Include enough concrete evidence and limits to judge the claim. When another method could solve the same problem, name the constraint or tradeoff that changes the choice.
 
 Add a concrete example when it makes the mechanism, consequence, or limit easier to understand. Run the case from its starting input or action to the result. Reuse the same case across the segment when that makes the steps easier to follow. Use numbers when they make the idea easier to see. Do not force an example when the story is already concrete.
 
-Choose the clearest shape for each story. A compact paragraph, a few short paragraphs, bullets, a small comparison, or visible labels can all work. Use visible labels only when they make the story easier to scan. Do not force the same template onto every story. A small story may need only a few sentences. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
+Use this visible scan frame by default:
+
+- `**What happened:**` states the facts, result, evidence, and important limits.
+- `**Why it matters:**` states what changes, becomes possible, or deserves caution.
+- `**Bigger picture:**` zooms out when the story changes the AI field or market: who gains or loses, what becomes cheaper or easier, whether it supports a wider trend, or how it connects to knowledge the reader is building.
+- `**Example:**` runs a concrete case when it makes the idea easier to understand.
+
+The frame is a guide for clarity, not a form to fill. What happened and Why it matters normally appear. If the wider effect is narrow or unknown, keep Bigger picture to one honest sentence or omit it. Use Example only when it helps. Do not add padding, invent a market effect, or force an example to fill a label.
+
+Inside each label, choose the clearest shape for the story. A compact paragraph, a few short paragraphs, bullets, or a small comparison can all work. The labels do not impose a sentence count. A small story may need only a few sentences. A major story may need a few short paragraphs. Do not turn every segment into a full lesson.
 
 After the story segments, add one optional deeper lesson when one story rewards more understanding. Give it a specific heading instead of calling it "Deeper lesson." Teach the few ideas that make the rest click. Build one cumulative causal staircase from the simplest useful mechanism and a concrete example. Add each important part only after the previous version reveals the problem it solves. Show what would happen without it, the real alternative when one matters, which constraint makes the chosen tradeoff useful, and the limit that keeps the lesson honest. Keep the source's stated reason separate from your inference. Skip this section when no story deserves it.
 
