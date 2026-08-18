@@ -343,6 +343,22 @@ def test_reader_retries_only_an_omitted_source_card(project, monkeypatch) -> Non
     assert set(database.source_cards(sources)) == {source.id for source in sources}
 
 
+def test_reader_discards_an_unknown_card_and_retries_the_missing_source(
+    project, monkeypatch
+) -> None:
+    sources = add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_READER_UNKNOWN_CARD", "1")
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    database = Database(project.root / "data" / "state.db")
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 2
+    assert len(json.loads(card_events[0]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 3
+    assert len(json.loads(card_events[1]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 1
+    assert set(database.source_cards(sources)) == {source.id for source in sources}
+
+
 def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
     add_sources(project, 1, 3)
     monkeypatch.setenv("MODEL_FAIL_WRITER", "1")
