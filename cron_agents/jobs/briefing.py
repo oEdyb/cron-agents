@@ -441,12 +441,22 @@ def _check_citations(
         "BRIEFING_SECTIONS="
         f"{json.dumps(clean_sections, ensure_ascii=False, separators=(',', ':'))}"
     )
-    raw = _agent(ctx, reader_name, prompt)
-    try:
-        report = json.loads(raw)
-    except json.JSONDecodeError as error:
-        raise ValueError("citation check must be JSON") from error
-    _validate_citation_report(body, report)
+    last_error: ValueError | None = None
+    for _ in range(2):
+        raw = _agent(ctx, reader_name, prompt)
+        try:
+            report = json.loads(raw)
+        except json.JSONDecodeError as error:
+            last_error = ValueError("citation check must be JSON")
+            last_error.__cause__ = error
+            continue
+        try:
+            _validate_citation_report(body, report)
+            return
+        except ValueError as error:
+            last_error = error
+    assert last_error is not None
+    raise last_error
 
 
 def _link_citations(body: str, sources: list[Source]) -> str:

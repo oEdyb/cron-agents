@@ -458,6 +458,18 @@ def test_semantic_citation_swap_cannot_publish(project, monkeypatch) -> None:
     assert all(database.status(source.id) == "fetched" for source in sources)
 
 
+def test_citation_check_retries_one_disagreement(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_CHECKER_SWAP_ONCE", "1")
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    events = read_log(project.log)
+    assert result["sources"] == 2
+    assert [event["kind"] for event in events].count("reader-check") == 2
+    assert (project.root / "briefings" / "2026-07-31.md").exists()
+
+
 def test_config_without_editor_keeps_two_agent_flow(project) -> None:
     add_sources(project, 1, 3)
     project.data["jobs"]["briefing"].pop("editor")

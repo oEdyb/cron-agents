@@ -57,7 +57,16 @@ elif kind == "reader-check":
     for section in sections:
         matches = [record["id"] for record in records if record["title"] == section["heading"]]
         source_ids.append(matches)
-    if os.environ.get("MODEL_CHECKER_SWAP") and len(source_ids) > 1:
+    checker_calls = 0
+    if log_path := os.environ.get("MODEL_LOG"):
+        checker_calls = sum(
+            json.loads(line).get("kind") == "reader-check"
+            for line in Path(log_path).read_text().splitlines()
+        )
+    if (
+        os.environ.get("MODEL_CHECKER_SWAP")
+        or (os.environ.get("MODEL_CHECKER_SWAP_ONCE") and checker_calls == 1)
+    ) and len(source_ids) > 1:
         source_ids[0], source_ids[1] = source_ids[1], source_ids[0]
     print(
         json.dumps(
