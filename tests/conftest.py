@@ -44,6 +44,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                     "MODEL_INVALID_CURATOR",
                     "MODEL_INVALID_CURATOR_ONCE",
                     "MODEL_CHECKER_SWAP",
+                    "MODEL_CHECKER_SWAP_ONCE",
                     "MODEL_SELECT_ALL",
                     "MODEL_UNKNOWN_CITATION",
                 ],
