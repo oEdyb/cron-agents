@@ -28,7 +28,10 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
     assert briefing_result["sources"] == 2
     output = (project.root / "briefings" / "2026-07-31.md").read_text()
 
-    curator, writer, editor = read_log(project.log)
+    events = read_log(project.log)
+    curator = next(event for event in events if event["kind"] == "curator")
+    writer = next(event for event in events if event["kind"] == "writer")
+    editor = next(event for event in events if event["kind"] == "editor")
     candidates = json.loads(curator["prompt"].split("CANDIDATE_SOURCES=", 1)[1])
     selected = json.loads(
         (project.root / "data" / "selections" / "2026-07-31.json").read_text()
@@ -48,10 +51,13 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
         "Rejected candidate",
         "Atom entry",
     }
-    assert all(record["content"] for record in candidates)
+    assert all(record["card"] for record in candidates)
+    assert all("content" not in record for record in candidates)
     assert "Briefing context: Fixture briefing." in curator["prompt"]
     assert "Briefing context: Fixture briefing." in writer["prompt"]
-    assert chosen == [candidates_by_id[source_id] for source_id in selected]
+    assert [record["id"] for record in chosen] == selected
+    assert all(record["content"] for record in chosen)
+    assert all(candidates_by_id[source_id]["card"] for source_id in selected)
     assert {record["id"] for record in editor["sources"]} == set(selected)
     assert all(source_id not in editor["prompt"] for source_id in selected)
     assert edited.startswith("# Daily Briefing")

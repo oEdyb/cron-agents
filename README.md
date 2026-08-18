@@ -4,7 +4,7 @@ I built cron-agents to turn the feeds I care about into one useful daily briefin
 
 ![RSS, HN, papers, X, and YouTube flow through saved links, a curator, a writer, and a final edit into one briefing; used links cannot return](assets/flow.svg)
 
-The curator chooses the sources. The writer researches them. A final editor makes the briefing easy to read and checks the sources again. SQLite prevents repeats.
+The reader makes one short cached card for each source. The curator chooses from those cards. The writer researches only the chosen sources, an editor cleans the draft, and a final check makes sure every link belongs to the story beside it. SQLite keeps the cards and prevents repeats.
 
 ## Set it up with an agent
 
@@ -17,9 +17,9 @@ Ask me which sources and topics I care about.
 Keep config.yaml and credentials private.
 Use the existing commands and config without adding Docker or extra services.
 Run the test suite, each collector, and one briefing.
-Verify that the writer and editor receive only the sources selected by the curator.
+Verify that the curator receives short source cards and the writer receives only its selected sources.
 The editor must open and edit draft.md in its private workspace and research those links.
-Check that the source links work and published sources cannot be selected again.
+Check that swapped source links are rejected and published sources cannot be selected again.
 Do not schedule it until these checks pass.
 Then ask what time I want it to run each day.
 ```
@@ -48,7 +48,7 @@ The included feeds need no API keys, so you can run them as-is. Edit two fields 
 - `jobs.briefing.context`: what you know, what you care about, and what to skip
 - `jobs.rss.feeds`: RSS, Atom, and YouTube feed URLs
 
-Collect sources, then run the curator, writer, and editor:
+Collect sources, then build the briefing:
 
 ```bash
 .venv/bin/cron-agents run rss
@@ -58,7 +58,7 @@ Collect sources, then run the curator, writer, and editor:
 .venv/bin/cron-agents run briefing
 ```
 
-Open `briefings/YYYY-MM-DD.md`. The curator keeps every strong source, so the count changes with the day. The writer researches only those stories, and the editor reads the full draft before it is saved. Each source link sits beside the text it supports.
+Open `briefings/YYYY-MM-DD.md`. The source count changes with the day. The curator sees compact cards, while the writer and editor get the selected records. Each source link sits beside the text it supports.
 
 ## Run it every day
 
@@ -97,13 +97,13 @@ Use these files and fields:
 | Sources | `jobs.rss.feeds` in `config.yaml` |
 | Taste and audience | `jobs.briefing.context` in `config.yaml` |
 | Curator and writing | `prompts/curator.md` and `prompts/writer.md` |
-| Models | `agents.curator.model`, `agents.writer.model`, and `agents.editor.model` |
+| Models | `agents.reader.model`, `agents.curator.model`, `agents.writer.model`, and `agents.editor.model` |
 | New source type | Copy a collector module into `cron_agents/jobs/`, then set the new job's `module` field in `config.yaml` |
 | Private source | Send newline-delimited JSON into `.venv/bin/cron-agents import -` |
 
-To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, then set the curator, writer, and editor models to `kimi`, `kimi-web`, and `kimi-edit`. Add the variable to its schedule.
+To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, then set the reader and curator to `kimi`, the writer to `kimi-web`, and the editor to `kimi-edit`. Add the variable to its schedule.
 
-Git ignores `.venv/`, `config.yaml`, `data/`, `briefings/`, and local install metadata. Keep `data/state.db`: it records published sources so they cannot appear in another briefing.
+Git ignores `.venv/`, `config.yaml`, `data/`, `briefings/`, and local install metadata. Keep `data/state.db`: it stores source cards and records published links so they cannot appear again.
 
 ## Test changes
 

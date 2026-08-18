@@ -206,6 +206,16 @@ class Database:
             columns = {row[1] for row in connection.execute("PRAGMA table_info(sources)")}
             if "source_published_at" not in columns:
                 connection.execute("ALTER TABLE sources ADD COLUMN source_published_at TEXT")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS source_cards (
+                    source_id TEXT PRIMARY KEY REFERENCES sources(id) ON DELETE CASCADE,
+                    fingerprint TEXT NOT NULL,
+                    card TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
 
     def add_sources(self, sources: list[Source], *, published: bool = False) -> int:
         inserted = 0
@@ -354,6 +364,52 @@ class Database:
             ).fetchall()
         by_id = {row["id"]: self._from_row(row) for row in rows}
         return [by_id[source_id] for source_id in source_ids if source_id in by_id]
+
+    def source_cards(self, sources: list[Source]) -> dict[str, str]:
+        if not sources:
+            return {}
+        rows: list[sqlite3.Row] = []
+        with self._connect() as connection:
+            for start in range(0, len(sources), 500):
+                source_ids = [source.id for source in sources[start : start + 500]]
+                placeholders = ",".join("?" for _ in source_ids)
+                rows.extend(
+                    connection.execute(
+                        f"""
+                        SELECT source_id, fingerprint, card
+                        FROM source_cards
+                        WHERE source_id IN ({placeholders})
+                        """,  # noqa: S608 - placeholders are generated, not user input
+                        source_ids,
+                    ).fetchall()
+                )
+        fingerprints = {source.id: source.fingerprint for source in sources}
+        return {
+            row["source_id"]: row["card"]
+            for row in rows
+            if row["fingerprint"] == fingerprints[row["source_id"]]
+        }
+
+    def save_source_cards(self, cards: dict[str, str], sources: list[Source]) -> None:
+        by_id = {source.id: source for source in sources}
+        if set(cards) != set(by_id):
+            raise ValueError("source cards must match the supplied sources")
+        if any(not isinstance(card, str) or not card.strip() for card in cards.values()):
+            raise ValueError("source cards must be non-empty strings")
+        created_at = utc_now()
+        with self._connect() as connection:
+            for source_id, card in cards.items():
+                connection.execute(
+                    """
+                    INSERT INTO source_cards (source_id, fingerprint, card, created_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        fingerprint = excluded.fingerprint,
+                        card = excluded.card,
+                        created_at = excluded.created_at
+                    """,
+                    (source_id, by_id[source_id].fingerprint, card.strip(), created_at),
+                )
 
     def mark_published(self, source_ids: list[str]) -> None:
         if not source_ids:
