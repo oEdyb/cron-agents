@@ -180,6 +180,25 @@ def test_initialize_adds_source_time_to_an_existing_database(tmp_path: Path) -> 
     assert "source_published_at" in columns
 
 
+def test_source_cards_are_cached_for_the_exact_source_content(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    original = source("one", content="Original source material. " * 8)
+    db.add_sources([original])
+
+    assert db.source_cards([original]) == {}
+
+    db.save_source_cards({original.id: "The source tests one concrete idea."}, [original])
+
+    assert db.source_cards([original]) == {
+        original.id: "The source tests one concrete idea."
+    }
+
+    changed = source("one", content="The source now says something different. " * 8)
+    db.refresh_fetched_sources([changed])
+
+    assert db.source_cards([changed]) == {}
+
+
 def test_available_sources_rotates_across_providers(tmp_path: Path) -> None:
     db = database(tmp_path)
     sources = [

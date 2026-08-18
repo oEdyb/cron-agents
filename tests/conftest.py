@@ -19,6 +19,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     monkeypatch.setattr(briefing, "_now", lambda: datetime(2026, 7, 31, 20, tzinfo=UTC))
     (tmp_path / "prompts").mkdir()
     (tmp_path / "prompts" / "curator.md").write_text("Choose sources.")
+    (tmp_path / "prompts" / "reader.md").write_text("Read source material.")
     (tmp_path / "prompts" / "writer.md").write_text("Write the briefing.")
     log = tmp_path / "model.log"
     monkeypatch.setenv("MODEL_LOG", str(log))
@@ -35,16 +36,20 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                     "MODEL_LOG",
                     "MODEL_FAIL_WRITER",
                     "MODEL_FAIL_EDITOR",
+                    "MODEL_READER_DROP_CARD",
                     "MODEL_EDITOR_UNKNOWN_CITATION",
                     "MODEL_EDITOR_DROP_CITATION",
                     "MODEL_EDITOR_NO_COMPLETE",
                     "MODEL_INVALID_CURATOR",
+                    "MODEL_INVALID_CURATOR_ONCE",
+                    "MODEL_CHECKER_SWAP",
                     "MODEL_SELECT_ALL",
                     "MODEL_UNKNOWN_CITATION",
                 ],
             }
         },
         "agents": {
+            "reader": {"model": "fixture", "prompt": "prompts/reader.md"},
             "curator": {"model": "fixture", "prompt": "prompts/curator.md"},
             "writer": {"model": "fixture", "prompt": "prompts/writer.md"},
             "editor": {"model": "fixture", "prompt": "prompts/writer.md"},
@@ -58,6 +63,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             "briefing": {
                 "module": "cron_agents.jobs.briefing",
                 "curator": "curator",
+                "reader": "reader",
                 "writer": "writer",
                 "editor": "editor",
                 "context": "Fixture briefing.",

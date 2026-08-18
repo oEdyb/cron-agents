@@ -30,6 +30,35 @@ models:
     timeout: 600
     env: [PATH, HOME, CODEX_HOME]
 
+  codex-luna:
+    command:
+      - codex
+      - exec
+      - --ephemeral
+      - --skip-git-repo-check
+      - --ignore-user-config
+      - --ignore-rules
+      - --strict-config
+      - --disable
+      - apps
+      - --disable
+      - image_generation
+      - --model
+      - gpt-5.6-luna
+      - -c
+      - 'model_reasoning_effort="low"'
+      - --sandbox
+      - read-only
+      - -c
+      - features.shell_tool=false
+      - -c
+      - agents.enabled=false
+      - -c
+      - 'web_search="disabled"'
+      - '-'
+    timeout: 600
+    env: [PATH, HOME, CODEX_HOME]
+
   codex-web:
     command:
       - codex
@@ -125,6 +154,9 @@ models:
     output: jsonl
 
 agents:
+  reader:
+    model: codex-luna
+    prompt: prompts/reader.md
   curator:
     model: codex
     prompt: prompts/curator.md
@@ -169,24 +201,21 @@ jobs:
 
   briefing:
     module: cron_agents.jobs.briefing
+    reader: reader
     curator: curator
     writer: writer
     editor: editor
     context: |
       Audience: a developer who builds with AI.
-      Goal: turn today's strongest relevant stories into a multi-segment daily
-      briefing that teaches the useful part of each one.
+      Goal: turn today's strongest relevant stories into a daily briefing that
+      teaches the useful part of each one and sparks things worth making or testing.
       Prefer surprising tools, visible results, clear mechanisms, open projects, and
       experiments the reader can reproduce. Treat links to current work as weak
       context; they do not create interest on their own. Skip routine releases,
       generic business news, and incidents without a direct practical consequence.
-      Assume the reader knows common AI and software terms. Explain uncommon ideas
-      with plain words. Add a concrete example when it improves understanding. Focus
-      on the few ideas that make each story click. Prefer ideas the reader can test
-      and learn by doing. Learning
-      comes first; a useful project or content idea can follow. After the broad
-      briefing, teach one worthwhile story more deeply when it earns the space.
-      Include every strong match, preserve useful variety, and skip filler.
+      Assume the reader knows common AI and software terms. Use plain technical
+      English. Learning comes first. Useful projects and content can follow. Include
+      every strong match, preserve useful variety, and skip filler.
     lookback_hours: 36
     candidate_limit: 1000
     min_sources: 1

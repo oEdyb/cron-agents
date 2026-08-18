@@ -103,6 +103,33 @@ def test_document_escapes_untrusted_source_metadata() -> None:
     assert "[source:test:evil]" not in document
 
 
+def test_citation_report_rejects_a_semantic_source_swap() -> None:
+    body = (
+        "## Alpha result\n\nThis section explains alpha. [source:test:beta]\n\n"
+        "## Beta result\n\nThis section explains beta. [source:test:alpha]\n"
+    )
+    report = {
+        "sections": [
+            {"section": 1, "source_ids": ["test:alpha"]},
+            {"section": 2, "source_ids": ["test:beta"]},
+        ]
+    }
+
+    with pytest.raises(ValueError, match="citation check failed"):
+        briefing._validate_citation_report(body, report)
+
+
+def test_citation_report_covers_every_citation() -> None:
+    body = (
+        "An unsupported intro citation. [source:test:alpha]\n\n"
+        "## Beta result\n\nThis section explains beta. [source:test:beta]\n"
+    )
+    report = {"sections": [{"section": 1, "source_ids": ["test:beta"]}]}
+
+    with pytest.raises(ValueError, match="inside a level-two section"):
+        briefing._validate_citation_report(body, report)
+
+
 def test_writer_receives_only_selected_sources(project) -> None:
     sources = add_sources(project, 1, 3)
 
@@ -111,8 +138,11 @@ def test_writer_receives_only_selected_sources(project) -> None:
     selected = selection(project, "2026-07-31")["source_ids"]
     output = (project.root / "briefings" / "2026-07-31.md").read_text()
     events = read_log(project.log)
-    writer_prompt = events[1]["prompt"]
-    editor_event = events[2]
+    card_event = next(event for event in events if event["kind"] == "reader-cards")
+    curator_event = next(event for event in events if event["kind"] == "curator")
+    writer_prompt = next(event for event in events if event["kind"] == "writer")["prompt"]
+    editor_event = next(event for event in events if event["kind"] == "editor")
+    checker_event = next(event for event in events if event["kind"] == "reader-check")
     editor_prompt = editor_event["prompt"]
     rejected = ({f"test:item-{number}" for number in range(1, 4)} - set(selected)).pop()
     assert result["recovered"] is False
@@ -133,27 +163,27 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert {record["id"] for record in editor_event["sources"]} == set(selected)
     assert rejected not in writer_prompt
     assert rejected not in json.dumps(editor_event["sources"])
-    assert "The briefing is finished only when:" in editor_prompt
-    assert "lowest missing foundation" in editor_prompt
-    assert "include only the steps needed to understand it" in editor_prompt
-    assert "what happened and why it matters" in editor_prompt
-    assert "specific heading that states its result or change" in editor_prompt
-    assert "normally uses visible **What happened:** and **Why it matters:**" in editor_prompt
-    assert "**Bigger picture:** only when" in editor_prompt
-    assert "a concrete example when it makes the idea easier" in editor_prompt
-    assert "does not pad a label, invent a market effect, or force an example" in editor_prompt
-    assert "one or two sentences per label" not in editor_prompt
-    assert "do not force every causal step or alternative into every story" in editor_prompt
-    assert (
-        "an alternative only when it changes the reader's understanding or choice" in editor_prompt
-    )
-    assert "technical names after the things they name make sense" in editor_prompt
-    assert "not an information limit" in editor_prompt
-    assert "the draft missed" in editor_prompt
+    assert "Detailed content" in card_event["prompt"]
+    assert "Detailed content" not in curator_event["prompt"]
+    assert '"card":' in curator_event["prompt"]
+    assert "Detailed content" in checker_event["prompt"]
+    assert rejected not in checker_event["prompt"]
     assert "Open draft.md and sources.json" in editor_prompt
+    assert "strong worked example" in editor_prompt
+    assert "concrete problem or goal" in editor_prompt
+    assert "simple technical words" in editor_prompt
+    assert "Check every [source:ID] against sources.json" in editor_prompt
+    assert "Preserve the broad multi-story briefing" in editor_prompt
+    assert "Do not force labels, examples, or importance" in editor_prompt
     assert "DRAFT_BRIEFING=" not in editor_prompt
     assert "Clear because" in output
-    assert [event["kind"] for event in events] == ["curator", "writer", "editor"]
+    assert [event["kind"] for event in events] == [
+        "reader-cards",
+        "curator",
+        "writer",
+        "editor",
+        "reader-check",
+    ]
 
 
 def test_editor_receives_full_selected_content(project) -> None:
@@ -177,8 +207,9 @@ def test_editor_receives_full_selected_content(project) -> None:
 
     run_job(project.config, "briefing", date(2026, 7, 31))
 
-    writer_prompt = read_log(project.log)[1]["prompt"]
-    editor_event = read_log(project.log)[2]
+    events = read_log(project.log)
+    writer_prompt = next(event for event in events if event["kind"] == "writer")["prompt"]
+    editor_event = next(event for event in events if event["kind"] == "editor")
     assert "full-record-ending" not in writer_prompt
     assert "full-record-ending" not in editor_event["prompt"]
     assert "full-record-ending" in json.dumps(editor_event["sources"])
@@ -192,7 +223,9 @@ def test_default_selection_has_no_fixed_maximum(project) -> None:
 
     result = run_job(project.config, "briefing", date(2026, 7, 31))
 
-    curator_prompt = read_log(project.log)[0]["prompt"]
+    curator_prompt = next(
+        event["prompt"] for event in read_log(project.log) if event["kind"] == "curator"
+    )
     assert result["sources"] == 2
     assert "Select at least 1 source ID." in curator_prompt
     assert "There is no target count" in curator_prompt
@@ -218,7 +251,9 @@ def test_explicit_maximum_is_still_enforced(project, monkeypatch) -> None:
     with pytest.raises(ValueError, match="curator must select at most 2 sources"):
         run_job(project.config, "briefing", date(2026, 7, 31))
 
-    curator_prompt = read_log(project.log)[0]["prompt"]
+    curator_prompt = next(
+        event["prompt"] for event in read_log(project.log) if event["kind"] == "curator"
+    )
     assert "Select between 2 and 2 source IDs." in curator_prompt
 
 
@@ -227,7 +262,9 @@ def test_default_candidate_pool_is_not_cut_to_the_newest_sixty(project) -> None:
 
     run_job(project.config, "briefing", date(2026, 7, 31))
 
-    prompt = read_log(project.log)[0]["prompt"]
+    prompt = next(
+        event["prompt"] for event in read_log(project.log) if event["kind"] == "curator"
+    )
     records_json = prompt.split("CANDIDATE_SOURCES=", 1)[1]
     records = json.loads(records_json)
     assert len(records) == 125
@@ -257,6 +294,7 @@ def test_curator_skips_x_posts_without_enough_text() -> None:
         x_source("short-1", "This is wild"),
         x_source("short-2", "Could not agree more"),
         x_source("short-3", "Wow this changes everything"),
+        x_source("vague-image", "i guess, times have changed"),
         x_source("trivial-quote", "So true", "Exactly"),
     ]
     useful_quote = x_source(
@@ -267,6 +305,42 @@ def test_curator_skips_x_posts_without_enough_text() -> None:
     candidates = briefing._useful_candidates([*noise, useful_quote, useful])
 
     assert [source.id for source in candidates] == [useful_quote.id, useful.id]
+
+
+def test_source_card_batches_preserve_every_source(project, monkeypatch) -> None:
+    sources = add_sources(project, 1, 5)
+    monkeypatch.setattr(briefing, "CARD_BATCH_CHARS", 400)
+
+    batches = briefing._card_batches(sources, 1000)
+
+    assert len(batches) > 1
+    assert [source.id for batch in batches for source in batch] == [
+        source.id for source in sources
+    ]
+
+
+def test_source_card_batches_cap_the_output_object_count(project, monkeypatch) -> None:
+    sources = add_sources(project, 1, 5)
+    monkeypatch.setattr(briefing, "CARD_BATCH_CHARS", 1_000_000)
+    monkeypatch.setattr(briefing, "CARD_BATCH_SOURCES", 2)
+
+    batches = briefing._card_batches(sources, 1000)
+
+    assert [len(batch) for batch in batches] == [2, 2, 1]
+
+
+def test_reader_retries_only_an_omitted_source_card(project, monkeypatch) -> None:
+    sources = add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_READER_DROP_CARD", "1")
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    database = Database(project.root / "data" / "state.db")
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 2
+    assert len(json.loads(card_events[0]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 3
+    assert len(json.loads(card_events[1]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 1
+    assert set(database.source_cards(sources)) == {source.id for source in sources}
 
 
 def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
@@ -288,10 +362,12 @@ def test_writer_retry_reuses_selection(project, monkeypatch) -> None:
     assert selection(project, "2026-07-31") == first_selection
     assert result["recovered"] is False
     assert [event["kind"] for event in read_log(project.log)] == [
+        "reader-cards",
         "curator",
         "writer",
         "writer",
         "editor",
+        "reader-check",
     ]
 
 
@@ -311,11 +387,13 @@ def test_editor_failure_keeps_selection_for_retry(project, monkeypatch) -> None:
     assert selection(project, "2026-07-31") == first_selection
     assert result["recovered"] is False
     assert [event["kind"] for event in read_log(project.log)] == [
+        "reader-cards",
         "curator",
         "writer",
         "editor",
         "writer",
         "editor",
+        "reader-check",
     ]
     assert not list((project.root / "data").glob("briefing-*-*"))
 
@@ -352,6 +430,18 @@ def test_editor_must_confirm_completion(project, monkeypatch) -> None:
     assert not (project.root / "briefings" / "2026-07-31.md").exists()
 
 
+def test_semantic_citation_swap_cannot_publish(project, monkeypatch) -> None:
+    sources = add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_CHECKER_SWAP", "1")
+
+    with pytest.raises(ValueError, match="citation check failed"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    database = Database(project.root / "data" / "state.db")
+    assert not (project.root / "briefings" / "2026-07-31.md").exists()
+    assert all(database.status(source.id) == "fetched" for source in sources)
+
+
 def test_config_without_editor_keeps_two_agent_flow(project) -> None:
     add_sources(project, 1, 3)
     project.data["jobs"]["briefing"].pop("editor")
@@ -362,7 +452,12 @@ def test_config_without_editor_keeps_two_agent_flow(project) -> None:
 
     output = (project.root / "briefings" / "2026-07-31.md").read_text()
     assert result["recovered"] is False
-    assert [event["kind"] for event in read_log(project.log)] == ["curator", "writer"]
+    assert [event["kind"] for event in read_log(project.log)] == [
+        "reader-cards",
+        "curator",
+        "writer",
+        "reader-check",
+    ]
     assert "Useful because" in output
 
 
@@ -473,6 +568,17 @@ def test_invalid_curator_cannot_create_selection(project, monkeypatch) -> None:
 
     selection_dir = project.root / "data" / "selections"
     assert not selection_dir.exists()
+
+
+def test_curator_retries_one_invalid_selection(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_INVALID_CURATOR_ONCE", "1")
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    events = read_log(project.log)
+    assert result["sources"] == 2
+    assert [event["kind"] for event in events].count("curator") == 2
 
 
 def test_unknown_writer_citation_keeps_selection_for_retry(project, monkeypatch) -> None:
