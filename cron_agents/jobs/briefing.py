@@ -178,6 +178,7 @@ def _source_cards(
         values = result["cards"]
         if not isinstance(values, list):
             raise ValueError("reader cards must be a list")
+        requested_ids = {source.id for source in batch}
         batch_cards: dict[str, str] = {}
         for position, value in enumerate(values, start=1):
             if not isinstance(value, dict) or set(value) != {"id", "card"}:
@@ -186,14 +187,13 @@ def _source_cards(
                 not isinstance(value["id"], str)
                 or not isinstance(value["card"], str)
                 or not value["card"].strip()
-                or value["id"] in batch_cards
             ):
                 raise ValueError(f"reader returned an invalid source card at position {position}")
+            if value["id"] not in requested_ids:
+                continue
+            if value["id"] in batch_cards:
+                raise ValueError(f"reader returned an invalid source card at position {position}")
             batch_cards[value["id"]] = value["card"].strip()
-        requested_ids = {source.id for source in batch}
-        unknown = sorted(set(batch_cards) - requested_ids)
-        if unknown:
-            raise ValueError(f"reader returned unknown source card IDs: {', '.join(unknown)}")
         if not batch_cards:
             raise ValueError("reader returned no source cards")
         returned_sources = [source for source in batch if source.id in batch_cards]

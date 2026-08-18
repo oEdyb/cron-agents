@@ -29,6 +29,8 @@ if kind == "reader-cards":
     records = json.loads(prompt.split("SOURCE_RECORDS=", 1)[1])
     if os.environ.get("MODEL_READER_DROP_CARD") and len(records) > 1:
         records = records[:-1]
+    if os.environ.get("MODEL_READER_UNKNOWN_CARD") and len(records) > 1:
+        records[-1]["id"] = "rss-arxiv:204795ac0a186819eb0b270d"
     print(
         json.dumps(
             {
