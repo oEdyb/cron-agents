@@ -169,8 +169,11 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert "Detailed content" in checker_event["prompt"]
     assert rejected not in checker_event["prompt"]
     assert "Open draft.md and sources.json" in editor_prompt
-    assert "strong worked example" in editor_prompt
-    assert "concrete problem or goal" in editor_prompt
+    assert "technically capable generalist" in editor_prompt
+    assert "plain map of the problem, change, and reason to care" in editor_prompt
+    assert "benchmark, metric, method, or field-specific term" in editor_prompt
+    assert "Put each example beside the idea it clarifies" in editor_prompt
+    assert "put it first" not in editor_prompt
     assert "simple technical words" in editor_prompt
     assert "Check every [source:ID] against sources.json" in editor_prompt
     assert "Preserve the broad multi-story briefing" in editor_prompt
