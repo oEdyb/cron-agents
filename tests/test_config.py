@@ -67,13 +67,21 @@ def test_shipped_example_config_loads() -> None:
     assert "concrete case" in curator_text
     assert "today's limited reading time" in curator_text
     assert "There is no target count." in curator_text
-    assert "When a strong example exists, start there." in writer_text
+    assert "technically capable generalist" in writer_text
+    assert "plain map of the problem, what changed, and why the reader should care" in writer_text
+    assert "technical detail that changes the takeaway or teaches a useful mechanism" in writer_text
+    assert "what a benchmark tests" in writer_text
+    assert "what a metric measures" in writer_text
+    assert "When a strong example exists, start there." not in writer_text
     assert "Keep each story self-contained and short by default" in writer_text
     assert "plain technical English" in writer_text
-    assert "**Example:**" in writer_text
+    assert "Examples are not a required block" in writer_text
+    assert "Put a concrete case beside the idea it makes easier to understand" in writer_text
+    assert "**Example:**" not in writer_text
     assert "**What happened:**" in writer_text
     assert "**Why it matters:**" in writer_text
     assert "**Bigger picture:**" in writer_text
+    assert "Omit a weak example or a made-up bigger picture" in writer_text
     assert "the link can carry the rest" in writer_text
     assert "deeper lesson only when" in writer_text
     assert "## Try it" in writer_text
@@ -82,6 +90,8 @@ def test_shipped_example_config_loads() -> None:
     context = config.jobs["briefing"].settings["context"]
     assert "preserve useful variety" in context
     assert "plain technical" in context
+    assert "technically capable generalist" in context
+    assert "may be new to each source's field" in context
 
 
 def test_kimi_agent_disables_tools_and_subagents() -> None:

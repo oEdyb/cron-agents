@@ -206,7 +206,7 @@ jobs:
     writer: writer
     editor: editor
     context: |
-      Audience: a developer who builds with AI.
+      Audience: a technically capable generalist who builds with AI and may be new to each source's field.
       Goal: turn today's strongest relevant stories into a daily briefing that
       teaches the useful part of each one and sparks things worth making or testing.
       Prefer surprising tools, visible results, clear mechanisms, open projects, and
