@@ -164,8 +164,11 @@ def test_writer_receives_only_selected_sources(project) -> None:
     assert rejected not in writer_prompt
     assert rejected not in json.dumps(editor_event["sources"])
     assert "Detailed content" in card_event["prompt"]
+    assert "BRIEFING_CONTEXT=" in card_event["prompt"]
+    assert "Fixture briefing." in card_event["prompt"]
     assert "Detailed content" not in curator_event["prompt"]
     assert '"card":' in curator_event["prompt"]
+    assert "KEEP:" in curator_event["prompt"]
     assert "Detailed content" in checker_event["prompt"]
     assert rejected not in checker_event["prompt"]
     assert "Open draft.md and sources.json" in editor_prompt
@@ -339,11 +342,14 @@ def test_reader_retries_only_an_omitted_source_card(project, monkeypatch) -> Non
     run_job(project.config, "briefing", date(2026, 7, 31))
 
     database = Database(project.root / "data" / "state.db")
+    cache_key = briefing._card_cache_key("Fixture briefing.", 1000)
     card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
     assert len(card_events) == 2
     assert len(json.loads(card_events[0]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 3
     assert len(json.loads(card_events[1]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 1
-    assert set(database.source_cards(sources)) == {source.id for source in sources}
+    assert set(database.source_cards(sources, cache_key=cache_key)) == {
+        source.id for source in sources
+    }
 
 
 def test_reader_discards_an_unknown_card_and_retries_the_missing_source(
@@ -355,11 +361,75 @@ def test_reader_discards_an_unknown_card_and_retries_the_missing_source(
     run_job(project.config, "briefing", date(2026, 7, 31))
 
     database = Database(project.root / "data" / "state.db")
+    cache_key = briefing._card_cache_key("Fixture briefing.", 1000)
     card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
     assert len(card_events) == 2
     assert len(json.loads(card_events[0]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 3
     assert len(json.loads(card_events[1]["prompt"].split("SOURCE_RECORDS=", 1)[1])) == 1
-    assert set(database.source_cards(sources)) == {source.id for source in sources}
+    assert set(database.source_cards(sources, cache_key=cache_key)) == {
+        source.id for source in sources
+    }
+
+
+def test_reader_replaces_legacy_cards_without_a_judgment(project) -> None:
+    sources = add_sources(project, 1, 3)
+    database = Database(project.root / "data" / "state.db")
+    database.save_source_cards(
+        {source.id: "An old summary without a taste judgment." for source in sources},
+        sources,
+    )
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    cache_key = briefing._card_cache_key("Fixture briefing.", 1000)
+    cards = database.source_cards(sources, cache_key=cache_key)
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 1
+    assert set(cards) == {source.id for source in sources}
+    assert all(
+        card.startswith(("KEEP:", "SKIP:"))
+        for card in cards.values()
+    )
+
+
+def test_reader_rebuilds_cards_when_briefing_context_changes(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_INVALID_CURATOR", "1")
+
+    with pytest.raises(ValueError, match="unknown source IDs"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    monkeypatch.delenv("MODEL_INVALID_CURATOR")
+    project.data["jobs"]["briefing"]["context"] = "A different taste."
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 2
+    assert "BRIEFING_CONTEXT=A different taste." in card_events[-1]["prompt"]
+
+
+def test_reader_skip_judgment_still_reaches_curator(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_READER_SKIP_CARD", "1")
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    curator_prompt = next(
+        event["prompt"] for event in read_log(project.log) if event["kind"] == "curator"
+    )
+    assert "SKIP:" in curator_prompt
+
+
+def test_reader_rejects_cards_without_a_judgment_once(project, monkeypatch) -> None:
+    add_sources(project, 1, 3)
+    monkeypatch.setenv("MODEL_READER_BAD_LABEL", "1")
+
+    with pytest.raises(ValueError, match="reader returned no source cards"):
+        run_job(project.config, "briefing", date(2026, 7, 31))
+
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 1
 
 
 def test_writer_retry_reuses_selection(project, monkeypatch) -> None:

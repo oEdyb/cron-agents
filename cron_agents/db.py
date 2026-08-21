@@ -170,6 +170,13 @@ class Source:
         }
 
 
+def _card_fingerprint(source: Source, cache_key: str) -> str:
+    if not cache_key:
+        return source.fingerprint
+    value = f"{source.fingerprint}\0{cache_key}"
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
 class Database:
     def __init__(self, path: Path):
         self.path = path
@@ -365,7 +372,7 @@ class Database:
         by_id = {row["id"]: self._from_row(row) for row in rows}
         return [by_id[source_id] for source_id in source_ids if source_id in by_id]
 
-    def source_cards(self, sources: list[Source]) -> dict[str, str]:
+    def source_cards(self, sources: list[Source], *, cache_key: str = "") -> dict[str, str]:
         if not sources:
             return {}
         rows: list[sqlite3.Row] = []
@@ -383,14 +390,20 @@ class Database:
                         source_ids,
                     ).fetchall()
                 )
-        fingerprints = {source.id: source.fingerprint for source in sources}
+        fingerprints = {source.id: _card_fingerprint(source, cache_key) for source in sources}
         return {
             row["source_id"]: row["card"]
             for row in rows
             if row["fingerprint"] == fingerprints[row["source_id"]]
         }
 
-    def save_source_cards(self, cards: dict[str, str], sources: list[Source]) -> None:
+    def save_source_cards(
+        self,
+        cards: dict[str, str],
+        sources: list[Source],
+        *,
+        cache_key: str = "",
+    ) -> None:
         by_id = {source.id: source for source in sources}
         if set(cards) != set(by_id):
             raise ValueError("source cards must match the supplied sources")
@@ -408,7 +421,12 @@ class Database:
                         card = excluded.card,
                         created_at = excluded.created_at
                     """,
-                    (source_id, by_id[source_id].fingerprint, card.strip(), created_at),
+                    (
+                        source_id,
+                        _card_fingerprint(by_id[source_id], cache_key),
+                        card.strip(),
+                        created_at,
+                    ),
                 )
 
     def mark_published(self, source_ids: list[str]) -> None:

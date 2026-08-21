@@ -212,7 +212,8 @@ jobs:
       Prefer surprising tools, visible results, clear mechanisms, open projects, and
       experiments the reader can reproduce. Treat links to current work as weak
       context; they do not create interest on their own. Skip routine releases,
-      generic business news, and incidents without a direct practical consequence.
+      generic business news, routine security incidents, and package compromises
+      unless they reveal a broader mechanism or experiment worth trying.
       Assume the reader knows common AI and software terms. Use plain technical
       English. Learning comes first. Useful projects and content can follow. Include
       every strong match, preserve useful variety, and skip filler.

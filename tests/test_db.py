@@ -199,6 +199,20 @@ def test_source_cards_are_cached_for_the_exact_source_content(tmp_path: Path) ->
     assert db.source_cards([changed]) == {}
 
 
+def test_source_cards_are_cached_for_the_exact_card_context(tmp_path: Path) -> None:
+    db = Database(tmp_path / "state.db")
+    db.initialize()
+    item = source("one")
+    db.add_sources([item])
+
+    db.save_source_cards({item.id: "KEEP: Worth reading."}, [item], cache_key="taste-one")
+
+    assert db.source_cards([item], cache_key="taste-one") == {
+        item.id: "KEEP: Worth reading."
+    }
+    assert db.source_cards([item], cache_key="taste-two") == {}
+
+
 def test_available_sources_rotates_across_providers(tmp_path: Path) -> None:
     db = database(tmp_path)
     sources = [
