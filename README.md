@@ -4,7 +4,7 @@ I built cron-agents to turn the feeds I care about into one useful daily briefin
 
 ![RSS, HN, papers, X, and YouTube flow through saved links, a curator, a writer, and a final edit into one briefing; used links cannot return](assets/flow.svg)
 
-The reader makes one short cached card for each source. The curator chooses from those cards. The writer researches only the chosen sources, an editor cleans the draft, and a final check makes sure every link belongs to the story beside it. SQLite keeps the cards and prevents repeats.
+The reader gives each source a `KEEP` or `SKIP` first look and saves a short card. The curator chooses from those cards. The writer researches only the chosen sources, an editor cleans the draft, and a final check makes sure every link belongs to the story beside it. SQLite keeps the cards and prevents repeats.
 
 ## Set it up with an agent
 

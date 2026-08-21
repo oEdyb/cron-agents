@@ -31,6 +31,8 @@ if kind == "reader-cards":
         records = records[:-1]
     if os.environ.get("MODEL_READER_UNKNOWN_CARD") and len(records) > 1:
         records[-1]["id"] = "rss-arxiv:204795ac0a186819eb0b270d"
+    label = "CARD" if os.environ.get("MODEL_READER_BAD_LABEL") else "KEEP"
+    skip_first = bool(os.environ.get("MODEL_READER_SKIP_CARD"))
     print(
         json.dumps(
             {
@@ -38,11 +40,12 @@ if kind == "reader-cards":
                     {
                         "id": record["id"],
                         "card": (
+                            f"{'SKIP' if skip_first and position == 0 else label}: "
                             f"{record['title']} asks a concrete question and reports useful "
                             "evidence that can be learned from."
                         ),
                     }
-                    for record in records
+                    for position, record in enumerate(records)
                 ]
             }
         )

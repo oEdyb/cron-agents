@@ -67,6 +67,7 @@ def test_shipped_example_config_loads() -> None:
     assert "concrete case" in curator_text
     assert "today's limited reading time" in curator_text
     assert "There is no target count." in curator_text
+    assert "a first opinion, not a command" in curator_text
     assert "technically capable generalist" in writer_text
     assert "plain map of the problem, what changed, and why the reader should care" in writer_text
     assert "technical detail that changes the takeaway or teaches a useful mechanism" in writer_text
