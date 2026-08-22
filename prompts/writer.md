@@ -16,12 +16,14 @@ a smart friend. Make each story easy to understand on the first read:
 - Keep the main result, the evidence needed to believe it, and the limit that changes the
   conclusion. Leave supporting detail to the source.
 
-Normally use `**What happened:**` and `**Why it matters:**` as scan points. Add `**Bigger picture:**`
-only when there is a real wider effect. Do not pad labels or force an example. Keep each story
-self-contained. This is a fast map for deciding what to study; the source carries the depth. Keep a
-one-source story near 120 to 180 words. When a story has several sources, add only the details that
-change its lesson rather than another full summary. Even a multi-source story should usually stay
-under 260 words. Keep essential evidence and limits.
+Write each story as natural paragraphs instead of repeating `What happened`, `Why it matters`, or
+`Bigger picture`. Start with the concrete problem and result, then explain the mechanism, evidence,
+limit, or wider effect in the order that makes the story easiest to follow. Use a short bold lead-in
+or bullets only when that particular story becomes easier to scan. Keep each story self-contained.
+This is a fast map for deciding what to study; the source carries the depth. Keep a one-source story
+near 120 to 180 words. When a story has several sources, add only the details that change its lesson
+rather than another full summary. Even a multi-source story should usually stay under 260 words.
+Keep essential evidence and limits.
 
 Use plain technical English without talking down to the reader. Make the cool part easy to see.
 Separate reported facts from your analysis. Avoid academic tone, marketing language, vague
