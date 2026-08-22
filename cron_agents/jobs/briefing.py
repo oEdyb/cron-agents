@@ -15,7 +15,17 @@ from cron_agents.model import ModelError, run_model
 
 CITATION = re.compile(r"\[source:([^\]]+)]")
 H2 = re.compile(r"(?m)^## (.+)$")
-URL = re.compile(r"https?://\S+")
+URL = re.compile(r"(?i)(?:https?:|mailto:)\S+")
+LINK = re.compile(
+    r"]\(|!?\[\[[^\n]+?]]|(?m:^\s*\[[^]\n]+]:\s*\S+)|(?i:<(?:a|img)\b)"
+)
+NON_PROSE = re.compile(
+    r"(?is:```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|<!--.*?(?:-->|\Z)|"
+    r"<(?:code|pre|script|style|textarea)\b.*?</(?:code|pre|script|style|textarea)>|"
+    r"\$\$.*?(?:\$\$|\Z)|\\\[.*?\\]|\\\(.*?\\\))|"
+    r"(?P<ticks>`+)[^\n]*?(?P=ticks)|\$[^$\n]*\$|(?m:^(?: {4}|\t)[^\n]*$)"
+)
+HTML_TAG = re.compile(r"(?is:<[^>\n]*>)")
 WORD = re.compile(r"\b\w+\b")
 CARD_BATCH_CHARS = 250_000
 CARD_BATCH_SOURCES = 100
@@ -397,9 +407,17 @@ def _writer_prompt(
 
 
 def _validate_writer_output(output: str, source_ids: list[str]) -> None:
-    if URL.search(output):
-        raise ValueError("writer output must not contain URLs")
-    cited = set(CITATION.findall(output))
+    citations = list(CITATION.finditer(output))
+    rendered = NON_PROSE.sub("", output)
+    if URL.search(rendered) or LINK.search(rendered):
+        raise ValueError("writer output must not contain links or URLs")
+    prose = HTML_TAG.sub("", rendered)
+    if len(CITATION.findall(prose)) != len(citations) or any(
+        (match.start() > 0 and output[match.start() - 1] in "\\!")
+        for match in citations
+    ):
+        raise ValueError("writer citations must be plain text markers")
+    cited = {match.group(1) for match in citations}
     selected = set(source_ids)
     unknown = sorted(cited - selected)
     missing = sorted(selected - cited)

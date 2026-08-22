@@ -135,12 +135,92 @@ def test_citation_report_covers_every_citation() -> None:
         briefing._validate_citation_report(body, report)
 
 
-def test_writer_cannot_create_source_links() -> None:
-    with pytest.raises(ValueError, match="must not contain URLs"):
-        briefing._validate_writer_output(
+@pytest.mark.parametrize(
+    "body,error",
+    [
+        (
             "## Result\n\nClaim [source:test:alpha](https://example.com/alpha)",
+            "must not contain links or URLs",
+        ),
+        (
+            "## Result\n\nClaim [source:test:alpha](HTTPS://example.com/alpha)",
+            "must not contain links or URLs",
+        ),
+        (
+            "## Result\n\nClaim [source:test:alpha](//example.com/alpha)",
+            "must not contain links or URLs",
+        ),
+        ("## Result\n\n`[source:test:alpha]`", "must be plain text markers"),
+        ("## Result\n\n``[source:test:alpha]``", "must be plain text markers"),
+        ("## Result\n\n    [source:test:alpha]", "must be plain text markers"),
+        ("## Result\n\n![source:test:alpha]", "must be plain text markers"),
+        (
+            "## Result\n\n![Evidence [source:test:alpha]](/chart.png)",
+            "must not contain links or URLs",
+        ),
+        ("## Result\n\n<!-- [source:test:alpha] -->", "must be plain text markers"),
+        (
+            '## Result\n\n<span title="[source:test:alpha]">Claim</span>',
+            "must be plain text markers",
+        ),
+        (
+            "## Result\n\n<https://example.com> [source:test:alpha]",
+            "must not contain links or URLs",
+        ),
+        (
+            '## Result\n\n<a href="/more">More</a> [source:test:alpha]',
+            "must not contain links or URLs",
+        ),
+        ("## Result\n\n$[source:test:alpha]$", "must be plain text markers"),
+        (
+            "## Result\n\n<script>[source:test:alpha]</script>",
+            "must be plain text markers",
+        ),
+        ("## Result\n\n\\[source:test:alpha]", "must be plain text markers"),
+    ],
+)
+def test_writer_cannot_hide_or_create_source_links(body: str, error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        briefing._validate_writer_output(
+            body,
             ["test:alpha"],
         )
+
+
+def test_writer_can_use_code_away_from_a_plain_citation() -> None:
+    briefing._validate_writer_output(
+        "## Result\n\nThe syntax is `[label](target)`. [source:test:alpha]",
+        ["test:alpha"],
+    )
+    briefing._validate_writer_output(
+        "## Result\n\n```md\n[label](target)\n```\n[source:test:alpha]",
+        ["test:alpha"],
+    )
+    briefing._validate_writer_output(
+        "## Result\n\nThe HTML element is `<a href=\"/more\">`. [source:test:alpha]",
+        ["test:alpha"],
+    )
+
+
+def test_writer_can_place_plain_citations_beside_each_other() -> None:
+    briefing._validate_writer_output(
+        "## Result\n\nClaim. [source:test:alpha][source:test:beta]",
+        ["test:alpha", "test:beta"],
+    )
+
+
+def test_writer_can_explain_a_numeric_range_before_a_plain_citation() -> None:
+    briefing._validate_writer_output(
+        "## Result\n\nScores use [0, 1] (higher is better). [source:test:alpha]",
+        ["test:alpha"],
+    )
+
+
+def test_writer_can_use_double_slashes_away_from_a_plain_citation() -> None:
+    briefing._validate_writer_output(
+        "## Result\n\nUse `items//workers` for the bucket count. [source:test:alpha]",
+        ["test:alpha"],
+    )
 
 
 def test_writer_receives_only_selected_sources(project) -> None:
