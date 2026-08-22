@@ -2,9 +2,9 @@
 
 I built cron-agents to turn the feeds I care about into one useful daily briefing.
 
-![RSS, HN, papers, X, and YouTube flow through saved links, a curator, a writer, and a final edit into one briefing; used links cannot return](assets/flow.svg)
+![RSS, HN, papers, X, and YouTube flow through saved links, a curator, a writer, and a source check into one briefing; used links cannot return](assets/flow.svg)
 
-The reader gives each source a `KEEP` or `SKIP` first look and saves a short card. The curator chooses from those cards. The writer researches only the chosen sources, an editor cleans the draft, and a final check makes sure every link belongs to the story beside it. SQLite keeps the cards and prevents repeats.
+The reader gives each source a `KEEP` or `SKIP` first look and saves a short card. The curator chooses and groups the best sources. The writer researches small batches of chosen stories, and a final check makes sure every link belongs to the story beside it. SQLite keeps the cards and prevents repeats.
 
 ## Set it up with an agent
 
@@ -18,7 +18,6 @@ Keep config.yaml and credentials private.
 Use the existing commands and config without adding Docker or extra services.
 Run the test suite, each collector, and one briefing.
 Verify that the curator receives short source cards and the writer receives only its selected sources.
-The editor must open and edit draft.md in its private workspace and research those links.
 Check that swapped source links are rejected and published sources cannot be selected again.
 Do not schedule it until these checks pass.
 Then ask what time I want it to run each day.
@@ -58,7 +57,7 @@ Collect sources, then build the briefing:
 .venv/bin/cron-agents run briefing
 ```
 
-Open `briefings/YYYY-MM-DD.md`. The source count changes with the day. The curator sees compact cards, while the writer and editor get the selected records. Each source link sits beside the text it supports.
+Open `briefings/YYYY-MM-DD.md`. The source count changes with the day. The curator sees compact cards, while the writer gets only the selected records. Each source link sits beside the text it supports.
 
 ## Run it every day
 
@@ -79,15 +78,6 @@ PATH=/home/your_name/.local/bin:/home/your_name/.kimi-code/bin:/usr/local/bin:/u
 
 Cron uses the machine's timezone. Use the same Linux account for the schedule and the model login. On a headless server, run `codex login --device-auth`.
 
-### Ubuntu 24.04
-
-If the editor fails with `bwrap: loopback: Operation not permitted`, Ubuntu blocked Codex's file sandbox. Keep the server-wide protection on.
-
-- Plain cron: give the native Codex binary a narrow AppArmor `userns,` rule.
-- Hardened systemd: let the service limit writes and set only the editor to `danger-full-access`.
-
-Test through the same cron or service before scheduling it. [Ubuntu documents the restriction here](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces).
-
 ## Change the workflow
 
 Use these files and fields:
@@ -97,11 +87,11 @@ Use these files and fields:
 | Sources | `jobs.rss.feeds` in `config.yaml` |
 | Taste and audience | `jobs.briefing.context` in `config.yaml` |
 | Curator and writing | `prompts/curator.md` and `prompts/writer.md` |
-| Models | `agents.reader.model`, `agents.curator.model`, `agents.writer.model`, and `agents.editor.model` |
+| Models | `agents.reader.model`, `agents.curator.model`, and `agents.writer.model` |
 | New source type | Copy a collector module into `cron_agents/jobs/`, then set the new job's `module` field in `config.yaml` |
 | Private source | Send newline-delimited JSON into `.venv/bin/cron-agents import -` |
 
-To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, then set the reader and curator to `kimi`, the writer to `kimi-web`, and the editor to `kimi-edit`. Add the variable to its schedule.
+To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, then set the reader and curator to `kimi` and the writer to `kimi-web`. Add the variable to its schedule.
 
 Git ignores `.venv/`, `config.yaml`, `data/`, `briefings/`, and local install metadata. Keep `data/state.db`: it stores source cards and records published links so they cannot appear again.
 

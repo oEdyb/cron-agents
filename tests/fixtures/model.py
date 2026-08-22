@@ -10,17 +10,14 @@ if "BRIEFING_SECTIONS=" in prompt:
     kind = "reader-check"
 elif "SOURCE_RECORDS=" in prompt:
     kind = "reader-cards"
+elif "SELECTED_SOURCE_CARDS=" in prompt:
+    kind = "grouper"
 elif "CANDIDATE_SOURCES=" in prompt:
     kind = "curator"
-elif "Edit draft.md in place" in prompt:
-    kind = "editor"
 else:
     kind = "writer"
 
 event: dict[str, object] = {"kind": kind, "prompt": prompt}
-if kind == "editor":
-    event["draft"] = Path("draft.md").read_text()
-    event["sources"] = json.loads(Path("sources.json").read_text())
 if log_path := os.environ.get("MODEL_LOG"):
     with Path(log_path).open("a", encoding="utf-8") as log:
         log.write(json.dumps(event) + "\n")
@@ -46,11 +43,7 @@ if kind == "reader-cards":
     ]
     if os.environ.get("MODEL_READER_MALFORMED_CARD") and len(cards) > 1:
         cards[1] = {"id": records[1]["id"], "summary": cards[1]["card"]}
-    print(
-        json.dumps(
-            {"cards": cards}
-        )
-    )
+    print(json.dumps({"cards": cards}))
 elif kind == "reader-check":
     records_json, sections_json = prompt.split("SOURCE_RECORDS=", 1)[1].split(
         "\n\nBRIEFING_SECTIONS=", 1
@@ -59,7 +52,9 @@ elif kind == "reader-check":
     sections = json.loads(sections_json)
     source_ids = []
     for section in sections:
-        matches = [record["id"] for record in records if record["title"] == section["heading"]]
+        matches = [
+            record["id"] for record in records if record["title"] in section["heading"].split(" + ")
+        ]
         source_ids.append(matches)
     checker_calls = 0
     if log_path := os.environ.get("MODEL_LOG"):
@@ -98,32 +93,43 @@ elif kind == "curator":
         print(json.dumps({"source_ids": [record["id"] for record in records]}))
     else:
         print(json.dumps({"source_ids": [record["id"] for record in records[:2]]}))
+elif kind == "grouper":
+    records = json.loads(prompt.split("SELECTED_SOURCE_CARDS=", 1)[1])
+    grouper_calls = 0
+    if log_path := os.environ.get("MODEL_LOG"):
+        with Path(log_path).open(encoding="utf-8") as log:
+            grouper_calls = sum(json.loads(line)["kind"] == "grouper" for line in log)
+    if os.environ.get("MODEL_INVALID_GROUPER_ONCE") and grouper_calls == 1:
+        stories = [[records[0]["id"]]]
+    elif os.environ.get("MODEL_GROUP_FIRST_TWO") and len(records) > 1:
+        stories = [[record["id"] for record in records[:2]]]
+        stories.extend([[record["id"]] for record in records[2:]])
+    else:
+        stories = [[record["id"]] for record in records]
+    print(json.dumps({"stories": stories}))
 elif kind == "writer":
-    if os.environ.get("MODEL_FAIL_WRITER"):
+    writer_calls = 0
+    if log_path := os.environ.get("MODEL_LOG"):
+        with Path(log_path).open(encoding="utf-8") as log:
+            writer_calls = sum(json.loads(line)["kind"] == "writer" for line in log)
+    if os.environ.get("MODEL_FAIL_WRITER") or (
+        os.environ.get("MODEL_FAIL_WRITER_ONCE") and writer_calls == 1
+    ):
         print("fixture writer failed", file=sys.stderr)
         raise SystemExit(9)
-    records = json.loads(prompt.split("SELECTED_SOURCES=", 1)[1])
+    stories = json.loads(prompt.split("SELECTED_STORIES=", 1)[1])
     if os.environ.get("MODEL_UNKNOWN_CITATION"):
         print("Unknown source [source:unknown:source]")
     else:
-        lines = ["# Daily Briefing", ""]
-        for record in records:
-            lines.append(f"## {record['title']}")
-            lines.append(f"Useful because it is concrete. [source:{record['id']}]")
+        lines = []
+        for story in stories:
+            lines.append(f"## {' + '.join(record['title'] for record in story)}")
+            citations = " ".join(
+                f"[source:{record['id']}]({record['url']})"
+                if os.environ.get("MODEL_LINK_WRITER_ONCE") and writer_calls == 1
+                else f"[source:{record['id']}]"
+                for record in story
+            )
+            lines.append(f"Useful because it is concrete. {citations}")
             lines.append("")
         print("\n".join(lines))
-else:
-    if os.environ.get("MODEL_FAIL_EDITOR"):
-        print("fixture editor failed", file=sys.stderr)
-        raise SystemExit(10)
-    if os.environ.get("MODEL_EDITOR_NO_COMPLETE"):
-        print("I could not edit the draft")
-        raise SystemExit
-    draft = Path("draft.md").read_text()
-    if os.environ.get("MODEL_EDITOR_UNKNOWN_CITATION"):
-        draft += "\nUnknown source [source:unknown:source]\n"
-    if os.environ.get("MODEL_EDITOR_DROP_CITATION"):
-        source_id = json.loads(Path("sources.json").read_text())[0]["id"]
-        draft = draft.replace(f"[source:{source_id}]", "", 1)
-    Path("draft.md").write_text(draft.replace("Useful because", "Clear because"))
-    print("EDIT_COMPLETE")

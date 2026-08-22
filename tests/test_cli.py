@@ -30,20 +30,21 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
 
     events = read_log(project.log)
     curator = next(event for event in events if event["kind"] == "curator")
+    grouper = next(event for event in events if event["kind"] == "grouper")
     writer = next(event for event in events if event["kind"] == "writer")
-    editor = next(event for event in events if event["kind"] == "editor")
     candidates = json.loads(curator["prompt"].split("CANDIDATE_SOURCES=", 1)[1])
-    selected = json.loads(
-        (project.root / "data" / "selections" / "2026-07-31.json").read_text()
-    )["source_ids"]
-    chosen = json.loads(writer["prompt"].split("SELECTED_SOURCES=", 1)[1])
-    edited = editor["draft"]
+    stories = json.loads((project.root / "data" / "selections" / "2026-07-31.json").read_text())[
+        "stories"
+    ]
+    selected = [source_id for story in stories for source_id in story]
+    chosen = json.loads(writer["prompt"].split("SELECTED_STORIES=", 1)[1])
+    chosen_records = [record for story in chosen for record in story]
     candidates_by_id = {record["id"]: record for record in candidates}
 
-    assert [curator["kind"], writer["kind"], editor["kind"]] == [
+    assert [curator["kind"], grouper["kind"], writer["kind"]] == [
         "curator",
+        "grouper",
         "writer",
-        "editor",
     ]
     assert {record["title"] for record in candidates} == {
         "First useful release",
@@ -54,14 +55,12 @@ def test_full_local_fixture_run(project, capsys, monkeypatch) -> None:
     assert all(record["card"] for record in candidates)
     assert all("content" not in record for record in candidates)
     assert "Briefing context: Fixture briefing." in curator["prompt"]
+    assert "These sources are already selected" in grouper["prompt"]
     assert "Briefing context: Fixture briefing." in writer["prompt"]
-    assert [record["id"] for record in chosen] == selected
-    assert all(record["content"] for record in chosen)
+    assert [record["id"] for record in chosen_records] == selected
+    assert all(record["content"] for record in chosen_records)
     assert all(candidates_by_id[source_id]["card"] for source_id in selected)
-    assert {record["id"] for record in editor["sources"]} == set(selected)
-    assert all(source_id not in editor["prompt"] for source_id in selected)
-    assert edited.startswith("# Daily Briefing")
-    assert "Rejected candidate" not in {record["title"] for record in chosen}
+    assert "Rejected candidate" not in {record["title"] for record in chosen_records}
     assert all(f'  - "{source_id}"' in output for source_id in selected)
     assert output.count("[Source](") == len(selected)
 

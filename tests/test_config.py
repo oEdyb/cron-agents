@@ -13,7 +13,7 @@ def test_shipped_example_config_loads() -> None:
 
     config = load_config(root / "config.example.yaml")
 
-    for name in ("codex", "codex-web", "codex-edit"):
+    for name in ("codex", "codex-web"):
         command = config.models[name].command
         assert command[command.index("--model") + 1] == "gpt-5.6-sol"
         reasoning = 'model_reasoning_effort="xhigh"'
@@ -31,9 +31,6 @@ def test_shipped_example_config_loads() -> None:
     assert "features.shell_tool=false" in config.models["codex-web"].command
     assert config.models["codex"].timeout == 600
     assert config.models["codex-web"].timeout == 1800
-    assert config.models["codex-edit"].timeout == 1800
-    assert "workspace-write" in config.models["codex-edit"].command
-    assert "features.shell_tool=false" not in config.models["codex-edit"].command
     luna = config.models["codex-luna"]
     assert luna.command[luna.command.index("--model") + 1] == "gpt-5.6-luna"
     assert 'model_reasoning_effort="low"' in luna.command
@@ -44,12 +41,9 @@ def test_shipped_example_config_loads() -> None:
     assert config.models["kimi"].command[-1] == "{prompt}"
     assert config.models["kimi"].output == "jsonl"
     assert config.models["kimi-web"].command[0] == "kimi"
-    assert "--auto" in config.models["kimi-edit"].command
     assert config.agents["reader"].model == "codex-luna"
     assert config.agents["curator"].model == "codex"
     assert config.agents["writer"].model == "codex-web"
-    assert config.agents["editor"].model == "codex-edit"
-    assert config.agents["editor"].prompt == config.agents["writer"].prompt
     assert config.jobs["briefing"].settings["reader"] == "reader"
     assert config.jobs["briefing"].settings["min_sources"] == 1
     assert "max_sources" not in config.jobs["briefing"].settings
@@ -69,25 +63,26 @@ def test_shipped_example_config_loads() -> None:
     assert "There is no target count." in curator_text
     assert "a first opinion, not a command" in curator_text
     assert "technically capable generalist" in writer_text
-    assert "plain map of the problem, what changed, and why the reader should care" in writer_text
-    assert "technical detail that changes the takeaway or teaches a useful mechanism" in writer_text
-    assert "what a benchmark tests" in writer_text
-    assert "what a metric measures" in writer_text
-    assert "When a strong example exists, start there." not in writer_text
-    assert "Keep each story self-contained and short by default" in writer_text
+    assert "smart friend" in writer_text
+    assert "simple picture of the problem and change" in writer_text
+    assert "one paragraph do one job" in writer_text
+    assert "Explain a necessary technical term" in writer_text
+    assert "Keep the main result" in writer_text
+    assert "fast map for deciding what to study" in writer_text
+    assert "120 to 180 words" in writer_text
+    assert "under 260 words" in writer_text
     assert "plain technical English" in writer_text
-    assert "Examples are not a required block" in writer_text
-    assert "Put a concrete case beside the idea it makes easier to understand" in writer_text
+    assert "Put a concrete case beside an abstract idea" in writer_text
     assert "**Example:**" not in writer_text
     assert "**What happened:**" in writer_text
     assert "**Why it matters:**" in writer_text
     assert "**Bigger picture:**" in writer_text
-    assert "Omit a weak example or a made-up bigger picture" in writer_text
-    assert "the link can carry the rest" in writer_text
-    assert "deeper lesson only when" in writer_text
-    assert "## Try it" in writer_text
-    assert "what to measure" in writer_text
-    assert "Cite each selected record as `[source:ID]`" in writer_text
+    assert "Do not pad labels or force an example" in writer_text
+    assert "Leave supporting detail to the source" in writer_text
+    assert "**Try it:**" in writer_text
+    assert "Write only the marker, not a link or URL" in writer_text
+    assert "keeps every link tied to an approved source" in writer_text
+    assert "Cite every selected record as the plain text marker `[source:ID]`" in writer_text
     context = config.jobs["briefing"].settings["context"]
     assert "preserve useful variety" in context
     assert "plain technical" in context

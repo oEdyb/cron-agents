@@ -88,33 +88,6 @@ models:
     timeout: 1800
     env: [PATH, HOME, CODEX_HOME]
 
-  codex-edit:
-    command:
-      - codex
-      - exec
-      - --ephemeral
-      - --skip-git-repo-check
-      - --ignore-user-config
-      - --ignore-rules
-      - --strict-config
-      - --disable
-      - apps
-      - --disable
-      - image_generation
-      - --model
-      - gpt-5.6-sol
-      - -c
-      - 'model_reasoning_effort="xhigh"'
-      - --sandbox
-      - workspace-write
-      - -c
-      - agents.enabled=false
-      - -c
-      - 'web_search="live"'
-      - '-'
-    timeout: 1800
-    env: [PATH, HOME, CODEX_HOME]
-
   kimi:
     command:
       - kimi
@@ -141,18 +114,6 @@ models:
     env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
     output: jsonl
 
-  kimi-edit:
-    command:
-      - kimi
-      - --auto
-      - --output-format
-      - stream-json
-      - -p
-      - '{prompt}'
-    timeout: 600
-    env: [PATH, HOME, KIMI_CODE_HOME, KIMI_CODE_EXPERIMENTAL_FLAG]
-    output: jsonl
-
 agents:
   reader:
     model: codex-luna
@@ -162,9 +123,6 @@ agents:
     prompt: prompts/curator.md
   writer:
     model: codex-web
-    prompt: prompts/writer.md
-  editor:
-    model: codex-edit
     prompt: prompts/writer.md
 jobs:
   rss:
@@ -204,7 +162,6 @@ jobs:
     reader: reader
     curator: curator
     writer: writer
-    editor: editor
     context: |
       Audience: a technically capable generalist who builds with AI and may be new to each source's field.
       Goal: turn today's strongest relevant stories into a daily briefing that
