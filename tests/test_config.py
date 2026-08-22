@@ -74,10 +74,12 @@ def test_shipped_example_config_loads() -> None:
     assert "plain technical English" in writer_text
     assert "Put a concrete case beside an abstract idea" in writer_text
     assert "**Example:**" not in writer_text
-    assert "**What happened:**" in writer_text
-    assert "**Why it matters:**" in writer_text
-    assert "**Bigger picture:**" in writer_text
-    assert "Do not pad labels or force an example" in writer_text
+    assert "natural paragraphs instead of repeating" in writer_text
+    assert "Start with the concrete problem and result" in writer_text
+    assert "Use a short bold lead-in or bullets only when" in writer_text
+    assert "**What happened:**" not in writer_text
+    assert "**Why it matters:**" not in writer_text
+    assert "**Bigger picture:**" not in writer_text
     assert "Leave supporting detail to the source" in writer_text
     assert "**Try it:**" in writer_text
     assert "Write only the marker, not a link or URL" in writer_text
