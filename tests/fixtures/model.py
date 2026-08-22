@@ -33,21 +33,22 @@ if kind == "reader-cards":
         records[-1]["id"] = "rss-arxiv:204795ac0a186819eb0b270d"
     label = "CARD" if os.environ.get("MODEL_READER_BAD_LABEL") else "KEEP"
     skip_first = bool(os.environ.get("MODEL_READER_SKIP_CARD"))
+    cards = [
+        {
+            "id": record["id"],
+            "card": (
+                f"{'SKIP' if skip_first and position == 0 else label}: "
+                f"{record['title']} asks a concrete question and reports useful "
+                "evidence that can be learned from."
+            ),
+        }
+        for position, record in enumerate(records)
+    ]
+    if os.environ.get("MODEL_READER_MALFORMED_CARD") and len(cards) > 1:
+        cards[1] = {"id": records[1]["id"], "summary": cards[1]["card"]}
     print(
         json.dumps(
-            {
-                "cards": [
-                    {
-                        "id": record["id"],
-                        "card": (
-                            f"{'SKIP' if skip_first and position == 0 else label}: "
-                            f"{record['title']} asks a concrete question and reports useful "
-                            "evidence that can be learned from."
-                        ),
-                    }
-                    for position, record in enumerate(records)
-                ]
-            }
+            {"cards": cards}
         )
     )
 elif kind == "reader-check":

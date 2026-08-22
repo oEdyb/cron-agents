@@ -37,6 +37,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                     "MODEL_FAIL_WRITER",
                     "MODEL_FAIL_EDITOR",
                     "MODEL_READER_DROP_CARD",
+                    "MODEL_READER_MALFORMED_CARD",
                     "MODEL_READER_BAD_LABEL",
                     "MODEL_READER_SKIP_CARD",
                     "MODEL_READER_UNKNOWN_CARD",
