@@ -15,6 +15,7 @@ def source(
     url: str | None = None,
     title: str | None = None,
     content: str | None = None,
+    fetched_at: str = "2026-07-31T12:00:00+00:00",
     source_published_at: str | None = None,
 ) -> Source:
     return Source.create(
@@ -23,7 +24,7 @@ def source(
         url=url or f"https://example.com/{provider_id}",
         title=title or f"Title {provider_id}",
         content=content or (f"Detailed source content for {provider_id}. " * 5),
-        fetched_at="2026-07-31T12:00:00+00:00",
+        fetched_at=fetched_at,
         source_published_at=source_published_at,
     )
 
@@ -157,6 +158,59 @@ def test_available_sources_uses_source_time_without_breaking_historical_cutoff(
 
     assert [item.id for item in current] == [recent.id]
     assert historical == []
+
+
+def test_available_sources_gives_a_late_hugging_face_paper_one_fresh_window(
+    tmp_path: Path,
+) -> None:
+    db = database(tmp_path)
+    late_paper = source(
+        "late-paper",
+        provider="hugging-face-papers",
+        fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at="2026-07-25T00:00:00+00:00",
+    )
+    equally_old_feed_item = source(
+        "old-feed-item",
+        provider="rss:feed",
+        fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at="2026-07-25T00:00:00+00:00",
+    )
+    db.add_sources([late_paper, equally_old_feed_item])
+
+    available = db.available_sources(
+        since="2026-07-31T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+
+    assert [item.id for item in available] == [late_paper.id]
+
+
+def test_paper_refresh_keeps_the_first_fetch_time(tmp_path: Path) -> None:
+    db = database(tmp_path)
+    original = source(
+        "paper",
+        provider="hugging-face-papers",
+        content="Original abstract.",
+        fetched_at="2026-07-30T12:00:00+00:00",
+        source_published_at="2026-07-30T00:00:00+00:00",
+    )
+    refreshed = source(
+        "paper",
+        provider="hugging-face-papers",
+        content="Updated abstract.",
+        fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at="2026-07-30T00:00:00+00:00",
+    )
+    db.add_sources([original])
+
+    assert db.refresh_fetched_sources([refreshed]) == 1
+
+    saved = db.get_sources([original.id])[0]
+    assert saved.content == "Updated abstract."
+    assert saved.fetched_at == "2026-07-30T12:00:00+00:00"
 
 
 def test_initialize_adds_source_time_to_an_existing_database(tmp_path: Path) -> None:

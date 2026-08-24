@@ -478,8 +478,13 @@ def test_hn_reader_skips_source_already_in_ledger(tmp_path: Path, monkeypatch) -
     assert result == {"job": "hn", "fetched": 0, "inserted": 0, "reader_failures": 0}
 
 
+@pytest.fixture
+def one_paper_day(monkeypatch) -> None:
+    monkeypatch.setattr(papers, "BACKFILL_DAYS", 1)
+
+
 def test_hugging_face_papers_collects_official_daily_api_shape(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, one_paper_day
 ) -> None:
     requested: list[str] = []
 
@@ -531,7 +536,9 @@ def test_hugging_face_papers_collects_official_daily_api_shape(
     assert query == {"date": ["2026-07-31"], "limit": ["100"], "p": ["0"]}
 
 
-def test_hugging_face_papers_collects_every_daily_page(tmp_path: Path, monkeypatch) -> None:
+def test_hugging_face_papers_collects_every_daily_page(
+    tmp_path: Path, monkeypatch, one_paper_day
+) -> None:
     def item(number: int) -> dict[str, object]:
         return {
             "paper": {
@@ -564,6 +571,56 @@ def test_hugging_face_papers_collects_every_daily_page(tmp_path: Path, monkeypat
     assert len(ctx.database.get_sources(source_ids)) == 102
 
 
+def test_hugging_face_papers_rechecks_the_last_seven_dates(
+    tmp_path: Path, monkeypatch
+) -> None:
+    requested_dates: list[str] = []
+    monkeypatch.setattr(papers, "utc_now", lambda: "2026-07-31T18:00:00+00:00")
+
+    def fetch(url: str) -> list[dict[str, object]]:
+        query = parse_qs(urlsplit(url).query)
+        requested_date = query["date"][0]
+        requested_dates.append(requested_date)
+        if requested_date != "2026-07-25":
+            return []
+        return [
+            {
+                "paper": {
+                    "id": "2607.26497",
+                    "title": "A paper added late",
+                    "summary": "A concrete abstract that appeared after the first daily pull.",
+                    "authors": [],
+                    "upvotes": 42,
+                    "submittedOnDailyAt": "2026-07-25T00:00:00.000Z",
+                }
+            }
+        ]
+
+    monkeypatch.setattr(papers, "fetch_json", fetch)
+    ctx = context(tmp_path, {})
+    object.__setattr__(ctx, "name", "papers")
+
+    result = papers.run(ctx)
+    available = ctx.database.available_sources(
+        since="2026-07-31T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+
+    assert result == {"job": "papers", "fetched": 1, "inserted": 1, "updated": 0}
+    assert requested_dates == [
+        "2026-07-31",
+        "2026-07-30",
+        "2026-07-29",
+        "2026-07-28",
+        "2026-07-27",
+        "2026-07-26",
+        "2026-07-25",
+    ]
+    assert [item.title for item in available] == ["A paper added late"]
+
+
 def test_hugging_face_papers_rejects_item_outside_requested_day(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -589,7 +646,7 @@ def test_hugging_face_papers_rejects_item_outside_requested_day(
 
 
 def test_hugging_face_papers_enriches_an_existing_unpublished_arxiv_row(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, one_paper_day
 ) -> None:
     monkeypatch.setattr(papers, "utc_now", lambda: "2026-07-31T18:00:00+00:00")
     ctx = context(tmp_path, {})
@@ -640,7 +697,7 @@ def test_hugging_face_papers_enriches_an_existing_unpublished_arxiv_row(
 
 
 def test_hugging_face_papers_does_not_revive_a_published_arxiv_row(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, one_paper_day
 ) -> None:
     ctx = context(tmp_path, {})
     object.__setattr__(ctx, "name", "papers")
