@@ -296,7 +296,7 @@ class Database:
                 cursor = connection.execute(
                     """
                     UPDATE sources
-                    SET title = ?, content = ?, author = ?, fetched_at = ?,
+                    SET title = ?, content = ?, author = ?,
                         source_published_at = ?, fingerprint = ?
                     WHERE id = ? AND status = 'fetched'
                     """,
@@ -304,7 +304,6 @@ class Database:
                         source.title,
                         source.content,
                         source.author,
-                        source.fetched_at,
                         source.source_published_at,
                         source.fingerprint,
                         matched_ids.pop(),
@@ -329,11 +328,19 @@ class Database:
                 FROM sources
                 WHERE status = 'fetched'
                   AND fetched_at < ?
-                  AND COALESCE(source_published_at, fetched_at) >= ?
                   AND COALESCE(source_published_at, fetched_at) < ?
-                ORDER BY COALESCE(source_published_at, fetched_at) DESC, fetched_at DESC, id
+                  AND (
+                    COALESCE(source_published_at, fetched_at) >= ?
+                    OR (provider = 'hugging-face-papers' AND fetched_at >= ?)
+                  )
+                ORDER BY CASE
+                           WHEN provider = 'hugging-face-papers'
+                           THEN MAX(COALESCE(source_published_at, fetched_at), fetched_at)
+                           ELSE COALESCE(source_published_at, fetched_at)
+                         END DESC,
+                         fetched_at DESC, id
                 """,
-                (before, since, before),
+                (before, before, since, since),
             ).fetchall()
         buckets: dict[str, deque[Source]] = {}
         for row in rows:

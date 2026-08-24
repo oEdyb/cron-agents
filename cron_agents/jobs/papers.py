@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote, urlencode
 
 from cron_agents.db import Source, utc_now
@@ -9,27 +9,30 @@ from cron_agents.jobs import JobContext, fetch_json
 API_URL = "https://huggingface.co/api/daily_papers"
 PAGE_SIZE = 100
 MAX_PAGES = 100
+# Daily Papers can grow after the first pull, so revisit one week without extra state.
+BACKFILL_DAYS = 7
 
 
 def run(ctx: JobContext) -> dict[str, object]:
-    requested_date = ctx.date.isoformat()
     fetched_at = utc_now()
     sources: list[Source] = []
     seen: set[str] = set()
-    for page in range(MAX_PAGES):
-        url = f"{API_URL}?{urlencode({'date': requested_date, 'limit': PAGE_SIZE, 'p': page})}"
-        items = fetch_json(url)
-        if not isinstance(items, list):
-            raise ValueError("Hugging Face returned an invalid paper list")
-        for item in items:
-            source = _source(item, fetched_at, len(sources) + 1, requested_date)
-            if source.id not in seen:
-                seen.add(source.id)
-                sources.append(source)
-        if len(items) < PAGE_SIZE:
-            break
-    else:
-        raise ValueError("Hugging Face returned too many paper pages")
+    for days_ago in range(BACKFILL_DAYS):
+        requested_date = (ctx.date - timedelta(days=days_ago)).isoformat()
+        for page in range(MAX_PAGES):
+            query = urlencode({"date": requested_date, "limit": PAGE_SIZE, "p": page})
+            items = fetch_json(f"{API_URL}?{query}")
+            if not isinstance(items, list):
+                raise ValueError("Hugging Face returned an invalid paper list")
+            for item in items:
+                source = _source(item, fetched_at, len(sources) + 1, requested_date)
+                if source.id not in seen:
+                    seen.add(source.id)
+                    sources.append(source)
+            if len(items) < PAGE_SIZE:
+                break
+        else:
+            raise ValueError("Hugging Face returned too many paper pages")
 
     updated = ctx.database.refresh_fetched_sources(sources)
     inserted = ctx.database.add_sources(sources)
