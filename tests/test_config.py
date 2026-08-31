@@ -55,19 +55,21 @@ def test_shipped_example_config_loads() -> None:
     writer_text = " ".join(writer_prompt.split())
     assert len(curator_prompt.split()) < 230
     assert len(writer_prompt.split()) < 700
-    assert "content idea, project, experiment, or comparison" in curator_text
-    assert "real curiosity" in curator_text
-    assert "compounding knowledge" in curator_text
-    assert "concrete case" in curator_text
+    assert "want to keep reading, learn, test, build, or film something" in curator_text
+    assert "main result creates real pull" in curator_text
+    assert "Technical importance and recency are not enough" in curator_text
+    assert "serving or runtime plumbing" in curator_text
+    assert "reason to care in one plain sentence" in curator_text
     assert "today's limited reading time" in curator_text
     assert "There is no target count." in curator_text
     assert "a first opinion, not a command" in curator_text
     assert "technically capable generalist" in writer_text
     assert "smart friend" in writer_text
-    assert "simple picture of the problem and change" in writer_text
+    assert "most surprising concrete result or consequence" in writer_text
+    assert "reason to care before paper names" in writer_text
     assert "one paragraph do one job" in writer_text
     assert "Explain a necessary technical term" in writer_text
-    assert "Keep the main result" in writer_text
+    assert "Keep only the evidence needed to believe the result" in writer_text
     assert "fast map for deciding what to study" in writer_text
     assert "120 to 180 words" in writer_text
     assert "under 260 words" in writer_text
@@ -75,12 +77,13 @@ def test_shipped_example_config_loads() -> None:
     assert "Put a concrete case beside an abstract idea" in writer_text
     assert "**Example:**" not in writer_text
     assert "natural paragraphs instead of repeating" in writer_text
-    assert "Start with the concrete problem and result" in writer_text
+    assert "Do not force every part into every story" in writer_text
     assert "Use a short bold lead-in or bullets only when" in writer_text
     assert "**What happened:**" not in writer_text
     assert "**Why it matters:**" not in writer_text
     assert "**Bigger picture:**" not in writer_text
     assert "Leave supporting detail to the source" in writer_text
+    assert "not a reviewer summarizing a paper or release" in writer_text
     assert "**Try it:**" in writer_text
     assert "Write only the marker, not a link or URL" in writer_text
     assert "keeps every link tied to an approved source" in writer_text
