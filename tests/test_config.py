@@ -39,8 +39,10 @@ def test_shipped_example_config_loads() -> None:
     assert luna.timeout == 600
     assert config.models["kimi"].command[0] == "kimi"
     assert config.models["kimi"].command[-1] == "{prompt}"
+    assert config.models["kimi"].env == ("PATH", "HOME", "KIMI_CODE_HOME")
     assert config.models["kimi"].output == "jsonl"
     assert config.models["kimi-web"].command[0] == "kimi"
+    assert config.models["kimi-web"].env == ("PATH", "HOME", "KIMI_CODE_HOME")
     assert config.agents["reader"].model == "codex-luna"
     assert config.agents["curator"].model == "codex"
     assert config.agents["writer"].model == "codex-web"
