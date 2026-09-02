@@ -12,7 +12,7 @@ Paste this prompt into Codex, Claude Code, Kimi, or another coding agent:
 
 ```text
 Set up cron-agents from https://github.com/oEdyb/cron-agents on this machine.
-Follow README.md and use Codex unless I ask for Kimi.
+Read AGENTS.md, follow README.md, and use Codex unless I ask for Kimi.
 Ask me which sources and topics I care about.
 Keep config.yaml and credentials private.
 Use the existing commands and config without adding Docker or extra services.
@@ -91,7 +91,7 @@ Use these files and fields:
 | New source type | Copy a collector module into `cron_agents/jobs/`, then set the new job's `module` field in `config.yaml` |
 | Private source | Send newline-delimited JSON into `.venv/bin/cron-agents import -` |
 
-To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, export `KIMI_CODE_EXPERIMENTAL_FLAG=1`, then set the reader and curator to `kimi` and the writer to `kimi-web`. Add the variable to its schedule.
+To use [Kimi Code](https://moonshotai.github.io/kimi-code/en/guides/getting-started.html), run `kimi login`, then set the reader and curator to `kimi` and the writer to `kimi-web`.
 
 Git ignores `.venv/`, `config.yaml`, `data/`, `briefings/`, and local install metadata. Keep `data/state.db`: it stores source cards and records published links so they cannot appear again.
 
