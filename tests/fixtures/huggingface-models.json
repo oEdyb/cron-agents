@@ -1,0 +1,48 @@
+[
+  {
+    "_id": "6a951c32379de35b0d189f6e",
+    "id": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+    "likes": 590,
+    "trendingScore": 552,
+    "private": false,
+    "downloads": 133024,
+    "tags": [
+      "transformers",
+      "safetensors",
+      "deepseek_v4",
+      "text-generation",
+      "image-text-to-text",
+      "license:mit",
+      "eval-results",
+      "endpoints_compatible",
+      "8-bit",
+      "fp8",
+      "region:us"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers",
+    "createdAt": "2026-08-31T06:16:18.000Z",
+    "modelId": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp"
+  },
+  {
+    "_id": "6a955b25eebf28997ebd39e2",
+    "id": "unsloth/DeepSeek-V4-Flash-Vision-Exp-GGUF",
+    "lastModified": "2026-09-04T00:41:59.000Z",
+    "likes": 65,
+    "private": false,
+    "downloads": 8679,
+    "tags": [
+      "transformers",
+      "gguf",
+      "unsloth",
+      "deepseek",
+      "base_model:deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      "license:mit",
+      "endpoints_compatible",
+      "region:us"
+    ],
+    "library_name": "transformers",
+    "createdAt": "2026-08-31T10:44:53.000Z",
+    "modelId": "unsloth/DeepSeek-V4-Flash-Vision-Exp-GGUF"
+  }
+]

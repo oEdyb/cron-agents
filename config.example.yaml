@@ -157,6 +157,22 @@ jobs:
     limit: 10
     reader_url: https://r.jina.ai/
 
+  # Trending Hugging Face models and Spaces, and one author's latest models.
+  # Uncomment and add `huggingface` to your schedule and jobs list to collect it.
+  # huggingface:
+  #   module: cron_agents.jobs.huggingface
+  #   limit_per_query: 20
+  #   queries:
+  #     - name: trending-models
+  #       kind: models
+  #       params: {sort: trendingScore, direction: -1}
+  #     - name: trending-spaces
+  #       kind: spaces
+  #       params: {sort: trendingScore, direction: -1}
+  #     - name: unsloth
+  #       kind: models
+  #       params: {author: unsloth, sort: lastModified, direction: -1}
+
   briefing:
     module: cron_agents.jobs.briefing
     reader: reader

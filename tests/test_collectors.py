@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from http.client import IncompleteRead
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from urllib.request import Request
 
 import pytest
 
 from cron_agents import jobs
 from cron_agents.config import Config, JobConfig
 from cron_agents.db import Database, Source
-from cron_agents.jobs import JobContext, hn, papers, rss
+from cron_agents.jobs import JobContext, hn, huggingface, papers, rss
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -134,6 +136,28 @@ def test_fetch_rejects_oversized_response(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="response exceeds 3 bytes"):
         jobs.fetch_bytes("https://example.com/feed", max_bytes=3)
+
+
+def test_fetch_sends_a_descriptive_user_agent(monkeypatch) -> None:
+    class Response(BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            self.close()
+
+    captured: list[Request] = []
+
+    def fake_urlopen(request, **_kwargs):
+        captured.append(request)
+        return Response(b"{}")
+
+    monkeypatch.setattr(jobs, "urlopen", fake_urlopen)
+
+    jobs.fetch_bytes("https://example.com/feed")
+
+    assert captured[0].get_header("User-agent") == jobs.USER_AGENT
+    assert captured[0].get_header("User-agent").startswith("cron-agents/")
 
 
 def test_fetch_returns_final_url_after_redirect(monkeypatch) -> None:
@@ -820,3 +844,186 @@ def test_hn_rejects_limit_above_documented_maximum(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="between 1 and 500"):
         hn.run(ctx)
+
+
+HF_MODELS_FIXTURE = json.loads((FIXTURES / "huggingface-models.json").read_text())
+HF_SPACES_FIXTURE = json.loads((FIXTURES / "huggingface-spaces.json").read_text())
+
+
+def by_title(ctx: JobContext, title: str) -> Source:
+    # Hugging Face hub IDs contain a slash, so Source.create hashes provider_id
+    # into the stored ID. Look sources up by their stable title instead.
+    sources = ctx.database.available_sources(
+        since="", before="9999-12-31T23:59:59+00:00", excluded_ids=set(), limit=100
+    )
+    matches = [source for source in sources if source.title == title]
+    assert len(matches) == 1, f"expected exactly one source titled {title!r}, found {matches}"
+    return matches[0]
+
+
+def test_huggingface_collects_models_and_spaces(tmp_path: Path, monkeypatch) -> None:
+    requested: list[str] = []
+
+    def fetch(url: str) -> list[dict[str, object]]:
+        requested.append(url)
+        if url.startswith("https://huggingface.co/api/models"):
+            return HF_MODELS_FIXTURE
+        if url.startswith("https://huggingface.co/api/spaces"):
+            return HF_SPACES_FIXTURE
+        raise AssertionError(f"unexpected URL: {url}")
+
+    monkeypatch.setattr(huggingface, "fetch_json", fetch)
+    ctx = context(
+        tmp_path,
+        {
+            "limit_per_query": 20,
+            "queries": [
+                {
+                    "name": "trending-models",
+                    "kind": "models",
+                    "params": {"sort": "trendingScore", "direction": -1},
+                },
+                {
+                    "name": "trending-spaces",
+                    "kind": "spaces",
+                    "params": {"sort": "trendingScore", "direction": -1},
+                },
+            ],
+        },
+    )
+    object.__setattr__(ctx, "name", "huggingface")
+
+    result = huggingface.run(ctx)
+
+    assert result == {"job": "huggingface", "fetched": 4, "inserted": 4, "updated": 0}
+    assert len(requested) == 2
+    models_query = parse_qs(urlsplit(requested[0]).query)
+    assert models_query == {"sort": ["trendingScore"], "direction": ["-1"], "limit": ["20"]}
+    assert urlsplit(requested[0]).path == "/api/models"
+    assert urlsplit(requested[1]).path == "/api/spaces"
+
+    model = by_title(ctx, "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp")
+    assert model.provider == "hugging-face:trending-models"
+    assert model.title == "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp"
+    assert model.url == "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp"
+    assert model.author == "deepseek-ai"
+    assert "kind: models" in model.content
+    assert "pipeline_tag: image-text-to-text" in model.content
+    assert "likes: 590" in model.content
+    assert "downloads: 133024" in model.content
+    assert "trendingScore: 552" in model.content
+    assert "tags: transformers, safetensors" in model.content
+    assert model.source_published_at == "2026-08-31T06:16:18+00:00"
+
+    space = by_title(ctx, "kulkas2pintu/wan555")
+    assert space.provider == "hugging-face:trending-spaces"
+    assert space.url == "https://huggingface.co/spaces/kulkas2pintu/wan555"
+    assert space.author == "kulkas2pintu"
+    assert "kind: spaces" in space.content
+    assert "sdk: gradio" in space.content
+    assert "card title: Wan 555 Video Generator" in space.content
+    assert "lastModified: 2026-09-01T09:12:03.000Z" in space.content
+    # Spaces without cardData or lastModified must not raise for missing optional fields.
+    plain_space = by_title(ctx, "pollen-robotics/microduck-simulator")
+    assert plain_space.source_published_at == "2026-08-20T07:53:36+00:00"
+    assert "card title" not in plain_space.content
+    assert "card emoji" not in plain_space.content
+
+
+def test_huggingface_dedupes_hub_id_across_queries_first_query_wins(
+    tmp_path: Path, monkeypatch
+) -> None:
+    shared = {
+        "id": "unsloth/DeepSeek-V4-Flash-Vision-Exp-GGUF",
+        "likes": 65,
+        "downloads": 8679,
+        "createdAt": "2026-08-31T10:44:53.000Z",
+    }
+    monkeypatch.setattr(huggingface, "fetch_json", lambda _url: [shared])
+    ctx = context(
+        tmp_path,
+        {
+            "limit_per_query": 20,
+            "queries": [
+                {"name": "unsloth", "kind": "models", "params": {}},
+                {"name": "trending-models", "kind": "models", "params": {}},
+            ],
+        },
+    )
+    object.__setattr__(ctx, "name", "huggingface")
+
+    result = huggingface.run(ctx)
+
+    assert result == {"job": "huggingface", "fetched": 1, "inserted": 1, "updated": 0}
+    source = by_title(ctx, "unsloth/DeepSeek-V4-Flash-Vision-Exp-GGUF")
+    assert source.provider == "hugging-face:unsloth"
+
+
+def test_huggingface_rejects_unknown_param_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        huggingface,
+        "fetch_json",
+        lambda _url: pytest.fail("an invalid query must fail before any fetch"),
+    )
+    ctx = context(
+        tmp_path,
+        {
+            "queries": [
+                {"name": "trending-models", "kind": "models", "params": {"full": "true"}},
+            ]
+        },
+    )
+
+    with pytest.raises(ValueError, match="unsupported params"):
+        huggingface.run(ctx)
+
+
+def test_huggingface_tolerates_missing_optional_fields(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        huggingface,
+        "fetch_json",
+        lambda _url: [{"id": "someone/minimal-model"}],
+    )
+    ctx = context(
+        tmp_path,
+        {"queries": [{"name": "trending-models", "kind": "models", "params": {}}]},
+    )
+    object.__setattr__(ctx, "name", "huggingface")
+
+    result = huggingface.run(ctx)
+    source = by_title(ctx, "someone/minimal-model")
+
+    assert result == {"job": "huggingface", "fetched": 1, "inserted": 1, "updated": 0}
+    assert source.content == "kind: models"
+    assert source.source_published_at is None
+
+
+def test_huggingface_skips_record_missing_id(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        huggingface,
+        "fetch_json",
+        lambda _url: [{"likes": 5}, {"id": "someone/real-model"}],
+    )
+    ctx = context(
+        tmp_path,
+        {"queries": [{"name": "trending-models", "kind": "models", "params": {}}]},
+    )
+    object.__setattr__(ctx, "name", "huggingface")
+
+    result = huggingface.run(ctx)
+
+    assert result == {"job": "huggingface", "fetched": 1, "inserted": 1, "updated": 0}
+
+
+def test_huggingface_rejects_bad_query_shape(tmp_path: Path) -> None:
+    ctx = context(tmp_path, {"queries": [{"name": "x", "kind": "papers", "params": {}}]})
+
+    with pytest.raises(ValueError, match="kind must be models or spaces"):
+        huggingface.run(ctx)
+
+
+def test_huggingface_rejects_empty_queries(tmp_path: Path) -> None:
+    ctx = context(tmp_path, {"queries": []})
+
+    with pytest.raises(ValueError, match="huggingface.queries"):
+        huggingface.run(ctx)

@@ -7,8 +7,12 @@ from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
 
+from cron_agents import __version__
 from cron_agents.config import Config, JobConfig
 from cron_agents.db import Database
+
+# Reddit and other public feeds reject requests without a descriptive agent.
+USER_AGENT = f"cron-agents/{__version__} (+https://github.com/oEdyb/cron-agents)"
 
 
 @dataclass(frozen=True)
@@ -22,7 +26,7 @@ class JobContext:
 
 
 def fetch_content(url: str, *, timeout: int = 30, max_bytes: int = 5_000_000) -> tuple[bytes, str]:
-    request = Request(url, headers={"User-Agent": "cron-agents/0.1"})
+    request = Request(url, headers={"User-Agent": USER_AGENT})
     with urlopen(request, timeout=timeout) as response:  # noqa: S310 - configured source URL
         content = response.read(max_bytes + 1)
         final_url = getattr(response, "geturl", lambda: url)()
