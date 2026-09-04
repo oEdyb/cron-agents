@@ -171,6 +171,11 @@ jobs:
       context; they do not create interest on their own. Skip routine releases,
       generic business news, routine security incidents, and package compromises
       unless they reveal a broader mechanism or experiment worth trying.
+      Prefer evidence over announcements: a specific result, meaningful comparison,
+      visible change, surprising failure, or explanation worth passing on. A popular
+      headline or small benchmark improvement is not enough. If a discovery could
+      inspire content, ask why a stranger would care and what real evidence supports
+      the premise. Do not force a video angle onto every useful thing to learn.
       Assume the reader knows common AI and software terms. Use plain technical
       English. Learning comes first. Useful projects and content can follow. Include
       every strong match, preserve useful variety, and skip filler.

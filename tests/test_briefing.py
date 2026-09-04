@@ -542,6 +542,26 @@ def test_reader_replaces_legacy_cards_without_a_judgment(project) -> None:
     )
 
 
+def test_reader_rebuilds_cards_from_the_previous_editorial_policy(project) -> None:
+    sources = add_sources(project, 1, 3)
+    database = Database(project.root / "data" / "state.db")
+    database.save_source_cards(
+        {source.id: "KEEP: A generic summary with no supporting evidence." for source in sources},
+        sources,
+        cache_key="taste-v1\0" + "1000\0Fixture briefing.",
+    )
+
+    run_job(project.config, "briefing", date(2026, 7, 31))
+
+    card_events = [event for event in read_log(project.log) if event["kind"] == "reader-cards"]
+    assert len(card_events) == 1
+    cards = database.source_cards(
+        sources, cache_key=briefing._card_cache_key("Fixture briefing.", 1000)
+    )
+    assert set(cards) == {source.id for source in sources}
+    assert all("generic summary" not in card for card in cards.values())
+
+
 def test_reader_rebuilds_cards_when_briefing_context_changes(project, monkeypatch) -> None:
     add_sources(project, 1, 3)
     monkeypatch.setenv("MODEL_INVALID_CURATOR", "1")
