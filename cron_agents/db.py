@@ -331,10 +331,10 @@ class Database:
                   AND COALESCE(source_published_at, fetched_at) < ?
                   AND (
                     COALESCE(source_published_at, fetched_at) >= ?
-                    OR (provider = 'hugging-face-papers' AND fetched_at >= ?)
+                    OR (provider LIKE 'hugging-face%' AND fetched_at >= ?)
                   )
                 ORDER BY CASE
-                           WHEN provider = 'hugging-face-papers'
+                           WHEN provider LIKE 'hugging-face%'
                            THEN MAX(COALESCE(source_published_at, fetched_at), fetched_at)
                            ELSE COALESCE(source_published_at, fetched_at)
                          END DESC,
