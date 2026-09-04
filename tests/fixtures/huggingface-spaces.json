@@ -1,0 +1,31 @@
+[
+  {
+    "_id": "6a86b2806f630b5b0d211ada",
+    "id": "pollen-robotics/microduck-simulator",
+    "likes": 405,
+    "trendingScore": 253,
+    "private": false,
+    "sdk": "docker",
+    "tags": ["docker", "region:us"],
+    "createdAt": "2026-08-20T07:53:36.000Z"
+  },
+  {
+    "_id": "6a096745f18236fd2f4e84ad",
+    "id": "kulkas2pintu/wan555",
+    "likes": 1756,
+    "trendingScore": 146,
+    "private": false,
+    "sdk": "gradio",
+    "cardData": {
+      "title": "Wan 555 Video Generator",
+      "emoji": "🎬",
+      "colorFrom": "indigo",
+      "colorTo": "pink",
+      "sdk": "gradio",
+      "pinned": false
+    },
+    "lastModified": "2026-09-01T09:12:03.000Z",
+    "tags": ["gradio", "mcp-server", "region:us"],
+    "createdAt": "2026-05-17T06:59:17.000Z"
+  }
+]

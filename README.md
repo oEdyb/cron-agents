@@ -54,6 +54,7 @@ Collect sources, then build the briefing:
 .venv/bin/cron-agents run hn
 .venv/bin/cron-agents run papers
 .venv/bin/cron-agents run arxiv
+# .venv/bin/cron-agents run huggingface  # uncomment jobs.huggingface in config.yaml first
 .venv/bin/cron-agents run briefing
 ```
 
