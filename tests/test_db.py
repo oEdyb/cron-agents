@@ -188,6 +188,34 @@ def test_available_sources_gives_a_late_hugging_face_paper_one_fresh_window(
     assert [item.id for item in available] == [late_paper.id]
 
 
+def test_available_sources_gives_a_trending_hub_record_one_fresh_window(
+    tmp_path: Path,
+) -> None:
+    db = database(tmp_path)
+    trending_space = source(
+        "org/space",
+        provider="hugging-face:trending-spaces",
+        fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at="2026-05-17T06:59:17+00:00",
+    )
+    equally_old_feed_item = source(
+        "old-feed-item",
+        provider="rss:feed",
+        fetched_at="2026-07-31T12:00:00+00:00",
+        source_published_at="2026-05-17T06:59:17+00:00",
+    )
+    db.add_sources([trending_space, equally_old_feed_item])
+
+    available = db.available_sources(
+        since="2026-07-31T00:00:00+00:00",
+        before="2026-08-01T00:00:00+00:00",
+        excluded_ids=set(),
+        limit=10,
+    )
+
+    assert [item.id for item in available] == [trending_space.id]
+
+
 def test_paper_refresh_keeps_the_first_fetch_time(tmp_path: Path) -> None:
     db = database(tmp_path)
     original = source(
