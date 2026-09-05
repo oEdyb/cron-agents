@@ -128,6 +128,8 @@ jobs:
   rss:
     module: cron_agents.jobs.rss
     limit_per_feed: 20
+    # Seconds between two requests to the same host. Reddit needs about 20.
+    host_interval_seconds: 20
     feeds:
       - name: codex-releases
         url: https://github.com/openai/codex/releases.atom

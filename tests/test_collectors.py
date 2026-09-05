@@ -49,6 +49,56 @@ def test_rss_uses_configured_job_name(tmp_path: Path) -> None:
     assert result["job"] == "arxiv"
 
 
+def test_rss_spaces_requests_to_the_same_host(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    feed = (FIXTURES / "feed.xml").as_uri()
+    ctx = context(
+        tmp_path,
+        {
+            "host_interval_seconds": 20,
+            "feeds": [
+                {"name": "one", "url": "https://www.reddit.com/r/one/top/.rss?t=day"},
+                {"name": "other", "url": "https://example.org/feed.xml"},
+                {"name": "two", "url": "https://www.reddit.com/r/two/top/.rss?t=day"},
+            ],
+        },
+    )
+    clock = {"now": 100.0}
+    sleeps: list[float] = []
+
+    def fake_fetch(url: str) -> tuple[bytes, str]:
+        clock["now"] += 1.0
+        return (FIXTURES / "feed.xml").read_bytes(), feed
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        clock["now"] += seconds
+
+    monkeypatch.setattr(rss, "fetch_content", fake_fetch)
+    monkeypatch.setattr(rss.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(rss.time, "sleep", fake_sleep)
+
+    result = rss.run(ctx)
+
+    assert result["fetched"] == 9
+    assert len(sleeps) == 1
+    assert 17.0 <= sleeps[0] <= 20.0
+
+
+def test_rss_rejects_a_negative_host_interval(tmp_path: Path) -> None:
+    ctx = context(
+        tmp_path,
+        {
+            "host_interval_seconds": -1,
+            "feeds": [{"name": "fixture", "url": (FIXTURES / "feed.xml").as_uri()}],
+        },
+    )
+
+    with pytest.raises(ValueError, match="host_interval_seconds"):
+        rss.run(ctx)
+
+
 def test_rss_collects_atom_fixture(tmp_path: Path) -> None:
     ctx = context(
         tmp_path,

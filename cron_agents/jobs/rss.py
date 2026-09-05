@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree
 
 from cron_agents.db import Source, utc_now
@@ -104,6 +105,22 @@ def _entries(document: bytes, base_url: str) -> list[tuple[ElementTree.Element, 
     return entries
 
 
+def _pace_host(url: str, interval: int, last_fetch: dict[str, float]) -> None:
+    """Wait so that one host is not asked twice within ``interval`` seconds.
+
+    Reddit answers a second request within about twenty seconds with 429.
+    """
+    if interval <= 0:
+        return
+    host = urlsplit(url).hostname or ""
+    previous = last_fetch.get(host)
+    if previous is not None:
+        remaining = interval - (time.monotonic() - previous)
+        if remaining > 0:
+            time.sleep(remaining)
+    last_fetch[host] = time.monotonic()
+
+
 def run(ctx: JobContext) -> dict[str, object]:
     feeds = ctx.job.settings.get("feeds")
     if not isinstance(feeds, list) or not feeds:
@@ -111,10 +128,14 @@ def run(ctx: JobContext) -> dict[str, object]:
     limit = ctx.job.settings.get("limit_per_feed", 20)
     if not isinstance(limit, int) or limit < 1:
         raise ValueError("rss.limit_per_feed must be a positive integer")
+    host_interval = ctx.job.settings.get("host_interval_seconds", 0)
+    if isinstance(host_interval, bool) or not isinstance(host_interval, int) or host_interval < 0:
+        raise ValueError("rss.host_interval_seconds must be a non-negative integer")
 
     fetched_at = utc_now()
     sources: list[Source] = []
     failures: list[tuple[str, Exception]] = []
+    last_fetch: dict[str, float] = {}
     for feed in feeds:
         if not isinstance(feed, dict):
             raise ValueError("each RSS feed must be a mapping")
@@ -124,6 +145,7 @@ def run(ctx: JobContext) -> dict[str, object]:
             raise ValueError("each RSS feed needs name and url")
 
         try:
+            _pace_host(url, host_interval, last_fetch)
             document, document_url = fetch_content(url)
             for entry, entry_base in _entries(document, document_url)[:limit]:
                 title = _text(entry, "title")
