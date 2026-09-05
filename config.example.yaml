@@ -124,6 +124,10 @@ agents:
   writer:
     model: codex-web
     prompt: prompts/writer.md
+  # Optional: a stronger model for the final citation check. Defaults to the reader.
+  # checker:
+  #   model: codex
+  #   prompt: prompts/checker.md
 jobs:
   rss:
     module: cron_agents.jobs.rss
@@ -178,6 +182,7 @@ jobs:
   briefing:
     module: cron_agents.jobs.briefing
     reader: reader
+    # checker: checker
     curator: curator
     writer: writer
     context: |

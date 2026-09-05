@@ -612,6 +612,9 @@ def _run(ctx: JobContext) -> dict[str, object]:
     reader_name = settings.get("reader")
     if reader_name is not None and not isinstance(reader_name, str):
         raise ValueError("briefing.reader must be a string")
+    checker_name = settings.get("checker", reader_name)
+    if checker_name is not None and not isinstance(checker_name, str):
+        raise ValueError("briefing.checker must be a string")
 
     run_date = ctx.date.isoformat()
     selection_dir = ctx.config.state_dir / "selections"
@@ -715,10 +718,10 @@ def _run(ctx: JobContext) -> dict[str, object]:
             )
         )
     body = "\n\n".join(bodies)
-    if reader_name is not None:
+    if checker_name is not None:
         _check_citations(
             ctx,
-            reader_name=reader_name,
+            reader_name=checker_name,
             body=body,
             sources=sources,
             max_content_chars=max_content_chars,
