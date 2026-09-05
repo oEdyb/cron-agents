@@ -686,6 +686,22 @@ def test_citation_check_retries_one_disagreement(project, monkeypatch) -> None:
     assert (project.root / "briefings" / "2026-07-31.md").exists()
 
 
+def test_citation_check_can_use_a_separate_checker_agent(project) -> None:
+    add_sources(project, 1, 3)
+    (project.root / "prompts" / "checker.md").write_text("Match sections to sources.")
+    project.data["agents"]["checker"] = {"model": "fixture", "prompt": "prompts/checker.md"}
+    project.data["jobs"]["briefing"]["checker"] = "checker"
+    project.config.write_text(yaml.safe_dump(project.data, sort_keys=False))
+
+    result = run_job(project.config, "briefing", date(2026, 7, 31))
+
+    checks = [event for event in read_log(project.log) if event["kind"] == "reader-check"]
+    assert result["sources"] == 2
+    assert len(checks) == 1
+    assert checks[0]["prompt"].startswith("Match sections to sources.")
+    assert "Read source material." not in checks[0]["prompt"]
+
+
 def test_saved_selection_reserves_sources_for_later_dates(project, monkeypatch) -> None:
     first_sources = add_sources(
         project,

@@ -88,7 +88,7 @@ Use these files and fields:
 | Sources | `jobs.rss.feeds` in `config.yaml` |
 | Taste and audience | `jobs.briefing.context` in `config.yaml` |
 | Curator and writing | `prompts/curator.md` and `prompts/writer.md` |
-| Models | `agents.reader.model`, `agents.curator.model`, and `agents.writer.model` |
+| Models | `agents.reader.model`, `agents.curator.model`, `agents.writer.model`, and optionally `agents.checker.model` for the final citation check (`jobs.briefing.checker`, defaults to the reader) |
 | New source type | Copy a collector module into `cron_agents/jobs/`, then set the new job's `module` field in `config.yaml` |
 | Private source | Send newline-delimited JSON into `.venv/bin/cron-agents import -` |
 
