@@ -266,7 +266,7 @@ def test_rss_rejects_malformed_xml(tmp_path: Path, monkeypatch) -> None:
         {"feeds": [{"name": "fixture", "url": "https://example.com/feed.xml"}]},
     )
 
-    with pytest.raises(RuntimeError, match="fixture: invalid RSS or Atom XML"):
+    with pytest.raises(RuntimeError, match="fixture .*invalid RSS or Atom XML"):
         rss.run(ctx)
 
 
@@ -283,8 +283,9 @@ def test_rss_saves_healthy_feeds_when_another_feed_fails(tmp_path: Path) -> None
         },
     )
 
-    with pytest.raises(RuntimeError, match="broken"):
-        rss.run(ctx)
+    result = rss.run(ctx)
+    assert len(result["failed_feeds"]) == 1
+    assert result["healthy_feeds"] == 1
 
     saved = ctx.database.available_sources(
         since="",
@@ -312,7 +313,7 @@ def test_rss_rejects_excessively_nested_xml(tmp_path: Path, monkeypatch) -> None
         {"feeds": [{"name": "deep", "url": "https://example.com/feed.xml"}]},
     )
 
-    with pytest.raises(RuntimeError, match="deep: invalid RSS or Atom XML"):
+    with pytest.raises(RuntimeError, match="deep .*invalid RSS or Atom XML"):
         rss.run(ctx)
 
 
@@ -337,8 +338,9 @@ def test_rss_saves_healthy_feed_after_truncated_http_response(
         },
     )
 
-    with pytest.raises(RuntimeError, match="broken"):
-        rss.run(ctx)
+    result = rss.run(ctx)
+    assert len(result["failed_feeds"]) == 1
+    assert result["healthy_feeds"] == 1
 
     saved = ctx.database.available_sources(
         since="",
@@ -1077,3 +1079,30 @@ def test_huggingface_rejects_empty_queries(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="huggingface.queries"):
         huggingface.run(ctx)
+
+
+def test_rss_alerts_after_three_continuous_days_and_recovery_resets(tmp_path, monkeypatch):
+    ctx = context(tmp_path, {"feeds": [
+        {"name": "duplicate-name", "url": "https://example.com/bad"},
+        {"name": "duplicate-name", "url": "https://example.com/good"},
+    ]})
+    broken = True
+
+    def fetch(url):
+        if broken and url.endswith('/bad'):
+            raise OSError('HTTP 404')
+        return (FIXTURES / 'feed.xml').read_bytes(), url
+
+    monkeypatch.setattr(rss, 'fetch_content', fetch)
+    monkeypatch.setattr(rss, 'utc_now', lambda: '2026-11-01T00:00:00+00:00')
+    assert rss.run(ctx)['healthy_feeds'] == 1
+    monkeypatch.setattr(rss, 'utc_now', lambda: '2026-11-03T23:59:59+00:00')
+    assert rss.run(ctx)['healthy_feeds'] == 1
+    monkeypatch.setattr(rss, 'utc_now', lambda: '2026-11-04T00:00:00+00:00')
+    with pytest.raises(RuntimeError, match='at least 3 days'):
+        rss.run(ctx)
+    broken = False
+    rss.run(ctx)
+    broken = True
+    monkeypatch.setattr(rss, 'utc_now', lambda: '2026-11-04T01:00:00+00:00')
+    assert rss.run(ctx)['healthy_feeds'] == 1
