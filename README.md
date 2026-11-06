@@ -105,3 +105,18 @@ The tests use local fixtures and need no model login or network access:
 .venv/bin/ruff check .
 .venv/bin/pytest
 ```
+
+### Feed failure alerts
+
+RSS collection saves healthy feeds and reports partial failures in its JSON result
+and logs, including each failed feed URL. A partial failure exits successfully until
+the same feed has failed continuously for at least 72 hours. A successful read
+resets that feed's failure streak. If every configured feed fails, the job exits
+nonzero immediately. Health persists in SQLite by job and URL, so feeds sharing a
+provider name do not reset each other's streaks. The same rule applies to an arXiv
+job using the RSS collector.
+
+For systemd installations, `deploy/cron-agents-alert@.service` is an optional
+failure-notification template. It reads the existing topic from a private
+`notify.env` and uses default ntfy priority; it contains no topic or credentials.
+Do not enable or run an alert unit just to test a deployment.

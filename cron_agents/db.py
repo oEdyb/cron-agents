@@ -5,7 +5,7 @@ import re
 import sqlite3
 from collections import deque
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -210,6 +210,15 @@ class Database:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS feed_health (
+                    job TEXT NOT NULL, url TEXT NOT NULL, name TEXT NOT NULL,
+                    failure_since TEXT, last_success TEXT, checked_at TEXT NOT NULL,
+                    error TEXT, PRIMARY KEY (job, url)
+                )
+                """
+            )
             columns = {row[1] for row in connection.execute("PRAGMA table_info(sources)")}
             if "source_published_at" not in columns:
                 connection.execute("ALTER TABLE sources ADD COLUMN source_published_at TEXT")
@@ -223,6 +232,35 @@ class Database:
                 )
                 """
             )
+
+    def record_feed_health(
+        self, job: str, name: str, url: str, checked_at: str, error: str | None
+    ) -> bool:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT failure_since, last_success FROM feed_health WHERE job = ? AND url = ?",
+                (job, url),
+            ).fetchone()
+            failure_since = (row["failure_since"] if row else None) or checked_at
+            last_success = row["last_success"] if row else None
+            if error is None:
+                failure_since, last_success = None, checked_at
+            connection.execute(
+                """
+                INSERT INTO feed_health
+                    (job, url, name, failure_since, last_success, checked_at, error)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(job, url) DO UPDATE SET name=excluded.name,
+                    failure_since=excluded.failure_since, last_success=excluded.last_success,
+                    checked_at=excluded.checked_at, error=excluded.error
+                """,
+                (job, url, name, failure_since, last_success, checked_at, error),
+            )
+        return bool(
+            failure_since
+            and datetime.fromisoformat(checked_at) - datetime.fromisoformat(failure_since)
+            >= timedelta(days=3)
+        )
 
     def add_sources(self, sources: list[Source], *, published: bool = False) -> int:
         inserted = 0

@@ -1,0 +1,23 @@
+[Unit]
+Description=Alert when Cron Agents job %i fails
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=cronagents
+Group=cronagents
+EnvironmentFile=/var/lib/cron-agents/notify.env
+ExecStart=/usr/bin/curl --fail --silent --show-error --max-time 20 -H "Title: Cron Agents failed" -H "Priority: default" -H "Tags: warning" --data "%i failed on %H. Check journalctl -u cron-agents@%i.service" https://ntfy.sh/${NTFY_TOPIC}
+TimeoutStartSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

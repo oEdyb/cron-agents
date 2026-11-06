@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -10,6 +11,7 @@ from cron_agents.db import Source, utc_now
 from cron_agents.jobs import JobContext, fetch_content
 
 # Formats: https://www.rssboard.org/rss-specification and RFC 4287.
+log = logging.getLogger(__name__)
 XML_BASE = "{http://www.w3.org/XML/1998/namespace}base"
 
 
@@ -134,7 +136,9 @@ def run(ctx: JobContext) -> dict[str, object]:
 
     fetched_at = utc_now()
     sources: list[Source] = []
-    failures: list[tuple[str, Exception]] = []
+    failures: list[tuple[str, str, Exception]] = []
+    persistent: list[str] = []
+    healthy = 0
     last_fetch: dict[str, float] = {}
     for feed in feeds:
         if not isinstance(feed, dict):
@@ -170,12 +174,26 @@ def run(ctx: JobContext) -> dict[str, object]:
                     )
                 )
         except Exception as error:
-            failures.append((name, error))
+            failures.append((name, url, error))
+            log.warning("Feed failed job=%s name=%s url=%s: %s", ctx.name, name, url, error)
+            if ctx.database.record_feed_health(ctx.name, name, url, fetched_at, str(error)):
+                persistent.append(f"{name} ({url}): {error}")
+        else:
+            healthy += 1
+            ctx.database.record_feed_health(ctx.name, name, url, fetched_at, None)
 
     inserted = ctx.database.add_sources(sources)
+    if failures and (healthy == 0 or persistent):
+        detail = "; ".join(
+            persistent or [f"{name} ({url}): {error}" for name, url, error in failures]
+        )
+        condition = "all feeds failed" if healthy == 0 else "feed failed for at least 3 days"
+        raise RuntimeError(
+            f"RSS {condition} after saving healthy feeds: {detail}"
+        ) from failures[0][2]
+    result: dict[str, object] = {"job": ctx.name, "fetched": len(sources), "inserted": inserted}
     if failures:
-        detail = "; ".join(f"{name}: {error}" for name, error in failures)
-        raise RuntimeError(f"RSS feed failures after saving healthy feeds: {detail}") from failures[
-            0
-        ][1]
-    return {"job": ctx.name, "fetched": len(sources), "inserted": inserted}
+        result.update(healthy_feeds=healthy, failed_feeds=[
+            {"name": name, "url": url, "error": str(error)} for name, url, error in failures
+        ])
+    return result
